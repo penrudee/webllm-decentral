@@ -3,187 +3,206 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>P2P Autonomous AI Agents (WebLLM + PeerJS)</title>
+  <title>Synchronized P2P AI Agents Chat</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
-    .container { background: #fff; border-radius: 12px; padding: 20px; max-width: 600px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    h2 { margin-top: 0; color: #1a73e8; }
-    .box { background: #f8f9fa; border: 1px solid #dadce0; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-    input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 8px; }
-    button { background: #1a73e8; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
-    button:disabled { background: #ccc; }
-    .chat-log { height: 350px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; background: #fafafa; }
-    .msg { padding: 8px 12px; border-radius: 8px; max-width: 85%; font-size: 0.9em; line-height: 1.4; }
-    .msg.user { background: #e3f2fd; align-self: flex-end; color: #0d47a1; }
-    .msg.agent-a { background: #e8f5e9; align-self: flex-start; color: #1b5e20; border-left: 4px solid #2e7d32; }
-    .msg.agent-b { background: #fff3e0; align-self: flex-start; color: #e65100; border-left: 4px solid #ef6c00; }
-    .status { font-size: 0.85em; color: #666; margin-top: 4px; font-weight: bold; }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #f0f2f5; padding: 15px; display: flex; justify-content: center; margin: 0; }
+    .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 600px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    h2 { margin: 0 0 15px 0; color: #1877f2; text-align: center; }
+    .box { background: #f7f8fa; border: 1px solid #e4e6eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+    .my-id { font-family: monospace; font-weight: bold; color: #1877f2; background: #e7f3ff; padding: 4px 8px; border-radius: 4px; }
+    
+    input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccd0d5; border-radius: 8px; margin-bottom: 8px; font-size: 0.95rem; }
+    .btn { background: #1877f2; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
+    .btn:disabled { background: #e4e6eb; color: #bcc0c4; cursor: not-allowed; }
+    .btn-success { background: #42b72a; }
+    
+    .chat-box { height: 380px; overflow-y: auto; border: 1px solid #e4e6eb; padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }
+    .msg { padding: 10px 14px; border-radius: 10px; max-width: 85%; font-size: 0.9rem; line-height: 1.4; word-break: break-word; }
+    
+    /* สไตล์แยกตามประเภทข้อความ */
+    .msg.system { background: #e4e6eb; color: #4b4f56; align-self: center; font-size: 0.8rem; border-radius: 20px; padding: 4px 12px; }
+    .msg.user-prompt { background: #1877f2; color: #fff; align-self: center; text-align: center; width: 90%; font-weight: 500; }
+    .msg.my-agent { background: #e7f3ff; color: #050505; align-self: flex-start; border-left: 4px solid #1877f2; }
+    .msg.peer-agent { background: #f0f2f5; color: #050505; align-self: flex-end; border-right: 4px solid #42b72a; }
+    
+    .status { font-size: 0.82rem; color: #606770; margin-top: 6px; font-weight: 600; text-align: center; }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h2>🤖 P2P AI Agent Collaboration</h2>
+<div class="card">
+  <h2>🤖 Synchronized P2P AI Chat</h2>
 
-  <!-- 1. สถานะและ Peer Connection -->
+  <!-- ส่วนตั้งค่าการเชื่อมต่อ -->
   <div class="box">
-    <div><strong>ID ของคุณ (Agent A):</strong> <span id="my-id">กำลังเชื่อมต่อ PeerJS...</span></div>
-    <div class="status" id="model-status">สถานะโมเดล: กำลังเตรียมพร้อม...</div>
-    <button id="init-model-btn" style="margin-top: 8px;">1. โหลดโมเดล WebLLM</button>
+    <div><strong>Peer ID ของคุณ:</strong> <span id="my-id" class="my-id">กำลังสร้าง ID...</span></div>
+    <div id="model-status" class="status">สถานะ: รอโหลดโมเดล AI</div>
+    <button id="init-model-btn" class="btn" style="margin-top: 8px;">1. โหลดโมเดล WebLLM บนเครื่อง</button>
   </div>
 
   <div class="box">
-    <input type="text" id="target-id" placeholder="วาง Peer ID ของ Agent B ที่นี่">
-    <button id="connect-btn" disabled>2. เชื่อมต่อกับ Agent B</button>
+    <input type="text" id="target-id" placeholder="วาง Peer ID ของเพื่อนที่นี่">
+    <button id="connect-btn" class="btn" disabled>2. เชื่อมต่อ P2P หาเพื่อน</button>
   </div>
 
-  <!-- 2. ประวัติการถกเถียงของ AI -->
-  <div class="chat-log" id="chat-log"></div>
+  <!-- หน้าจอแชทที่แสดงผลตรงกันทั้งสองฝั่ง -->
+  <div class="chat-box" id="chat-box"></div>
 
-  <!-- 3. ส่วนส่งคำถามจาก User -->
+  <!-- ส่วนให้ User พิมพ์โจทย์ -->
   <div style="margin-top: 12px;">
-    <input type="text" id="user-prompt" placeholder="ป้อนคำถามให้ AI คุยกันเอง..." disabled>
-    <button id="start-debate-btn" disabled>🚀 เริ่มการสนทนาระหว่าง AI</button>
+    <input type="text" id="user-input" placeholder="พิมพ์โจทย์ให้ AI ทั้งสองฝั่งช่วยกันคุย..." disabled>
+    <button id="send-btn" class="btn btn-success" disabled>🚀 ส่งโจทย์ให้ AI เริ่มคุยกัน</button>
   </div>
 </div>
 
 <script type="module">
   import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
-  // ใช้โมเดลขนาดเล็กเพื่อให้รันบน WebGPU ได้ลื่นไหล
-  const SELECTED_MODEL = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
-  
+  const MODEL_NAME = "Llama-3.2-1B-Instruct-q4f16_1-MLC";
+  const MAX_ROUNDS = 3; // จำนวนรอบที่ AI จะคุยโต้ตอบกัน
+
   let engine = null;
   let peer = null;
   let conn = null;
-  let currentRound = 0;
-  const MAX_ROUNDS = 3; // กำหนดจำนวนรอบการคุยเพื่อไม่ให้วน Loop ไม่สิ้นสุด
+  let myRole = "Agent A"; // ฝั่งริเริ่มส่งโจทย์จะเป็น Agent A อีกฝั่งจะเป็น Agent B
 
   const myIdEl = document.getElementById('my-id');
   const modelStatusEl = document.getElementById('model-status');
   const initModelBtn = document.getElementById('init-model-btn');
   const targetIdInput = document.getElementById('target-id');
   const connectBtn = document.getElementById('connect-btn');
-  const userPromptInput = document.getElementById('user-prompt');
-  const startDebateBtn = document.getElementById('start-debate-btn');
-  const chatLog = document.getElementById('chat-log');
+  const userInput = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+  const chatBox = document.getElementById('chat-box');
 
-  // 1. เริ่มต้น PeerJS
+  // 1. เริ่มต้นระบบ PeerJS
   peer = new Peer();
-  peer.on('open', (id) => {
-    myIdEl.textContent = id;
-  });
+  peer.on('open', (id) => myIdEl.textContent = id);
 
-  // รอการเชื่อมต่อจาก Peer เครื่องอื่น (กรณีเป็น Agent B)
+  // เมื่อมีเพื่อนเชื่อมต่อเข้ามา
   peer.on('connection', (incomingConn) => {
     conn = incomingConn;
-    setupConnection();
-    appendLog('System', 'Agent B เชื่อมต่อเข้ามาแล้ว!', 'system');
+    myRole = "Agent B"; // เครื่องนี้รับการเชื่อมต่อ -> ตั้งเป็น Agent B
+    setupConnectionEvents();
+    appendMessage("ระบบ", "มีเพื่อนเชื่อมต่อเข้ามาแล้ว!", "system");
   });
 
   // 2. โหลดโมเดล WebLLM
   initModelBtn.onclick = async () => {
     initModelBtn.disabled = true;
-    modelStatusEl.textContent = "กำลังดาวน์โหลดและตั้งค่าโมเดล AI...";
-    
+    modelStatusEl.textContent = "กำลังโหลดโมเดล AI ลง WebGPU...";
+
     try {
-      engine = await webllm.CreateMLCEngine(SELECTED_MODEL, {
-        initProgressCallback: (progress) => {
-          modelStatusEl.textContent = progress.text;
-        }
+      engine = await webllm.CreateMLCEngine(MODEL_NAME, {
+        initProgressCallback: (p) => modelStatusEl.textContent = p.text
       });
-      modelStatusEl.textContent = "✅ โมเดลพร้อมใช้งาน!";
+      modelStatusEl.textContent = "✅ โมเดลพร้อมใช้งานแล้ว!";
       connectBtn.disabled = false;
-      userPromptInput.disabled = false;
     } catch (err) {
-      modelStatusEl.textContent = "❌ เกิดข้อผิดพลาด: " + err.message;
+      modelStatusEl.textContent = "❌ โหลดโมเดลไม่สำเร็จ: " + err.message;
       initModelBtn.disabled = false;
     }
   };
 
-  // 3. เชื่อมต่อ P2P หา Agent B
+  // 3. กดเชื่อมต่อหาเพื่อน
   connectBtn.onclick = () => {
     const targetId = targetIdInput.value.trim();
-    if (!targetId) return alert('กรุณากรอก Peer ID ปลายทาง');
+    if (!targetId) return alert('กรุณากรอก Peer ID ของเพื่อน');
     
     conn = peer.connect(targetId);
-    setupConnection();
+    myRole = "Agent A"; // เครื่องนี้เป็นคนกดต่อหาเพื่อน -> ตั้งเป็น Agent A
+    setupConnectionEvents();
   };
 
-  function setupConnection() {
+  function setupConnectionEvents() {
     conn.on('open', () => {
-      appendLog('System', 'เชื่อมต่อ P2P สำเร็จ!', 'system');
-      startDebateBtn.disabled = false;
+      appendMessage("ระบบ", "เชื่อมต่อ P2P สำเร็จ! พร้อมเริ่มการสนทนา", "system");
+      userInput.disabled = false;
+      sendBtn.disabled = false;
     });
 
-    // เมื่อได้รับข้อความจาก Agent อีกฝั่ง
+    // รับข้อมูลสัญญาณจากอีกฝั่งเพื่อ Sync หน้าจอ
     conn.on('data', async (data) => {
-      if (data.type === 'agent_think') {
-        appendLog('Agent B', data.content, 'agent-b');
-        
-        // ถ้ายังไม่ครบจำนวนรอบ ให้ Agent A คิดคำตอบโต้ตอบกลับไป
+      // ฝั่งตรงข้ามส่งโจทย์มา
+      if (data.type === 'START_PROMPT') {
+        appendMessage("User", data.prompt, "user-prompt");
+      }
+      
+      // ฝั่งตรงข้ามส่งข้อความ AI ของเขามา
+      else if (data.type === 'AI_SPEECH') {
+        appendMessage(data.agentRole, data.text, "peer-agent");
+
+        // หากยังไม่ครบจำนวนรอบ ให้ AI เครื่องเราประมวลผลคำตอบโต้ตอบกลับไป
         if (data.round < MAX_ROUNDS) {
-          await processAgentTurn(data.originalPrompt, data.content, data.round + 1, 'Agent A');
+          await generateLocalAIResponse(data.originalPrompt, data.text, data.round + 1);
         } else {
-          appendLog('System', 'จบการระดมความคิดเห็นระหว่าง AI (ครบกำหนดรอบ)', 'system');
+          appendMessage("ระบบ", "จบการแลกเปลี่ยนความเห็น (ครบกำหนดรอบ)", "system");
         }
       }
     });
   }
 
-  // 4. เริ่มต้นสวิตช์ให้ AI คุยกันเองเมื่อ User สั่ง
-  startDebateBtn.onclick = async () => {
-    const prompt = userPromptInput.value.trim();
-    if (!prompt) return alert('กรุณาใส่โจทย์คำถาม');
-    if (!engine) return alert('กรุณาโหลดโมเดล AI ก่อน');
+  // 4. เมื่อ User กดส่งโจทย์
+  sendBtn.onclick = async () => {
+    const prompt = userInput.value.trim();
+    if (!prompt || !engine || !conn) return;
 
-    appendLog('User', prompt, 'user');
-    userPromptInput.value = '';
-    currentRound = 1;
+    userInput.value = '';
 
-    // Agent A เริ่มประมวลผลความคิดเห็นแรก
-    await processAgentTurn(prompt, "เริ่มต้นการวิเคราะห์", currentRound, 'Agent A');
+    // แสดงโจทย์บนหน้าจอตัวเอง และยิงไปแสดงที่หน้าจอเพื่อน
+    appendMessage("User", prompt, "user-prompt");
+    conn.send({ type: 'START_PROMPT', prompt: prompt });
+
+    // เริ่มต้นให้ AI เครื่องนี้ (Agent A) คิดคำตอบแรก
+    await generateLocalAIResponse(prompt, "เริ่มต้นการแลกเปลี่ยนความคิดเห็น", 1);
   };
 
-  // ฟังก์ชันให้ LLM ในเครื่องประมวลผลข้อความเพื่อส่งต่อให้อีกฝั่ง
-  async function processAgentTurn(originalPrompt, previousMessage, round, agentName) {
-    appendLog('System', `${agentName} กำลังคิดคำตอบ (รอบที่ ${round})...`, 'system');
+  // ฟังก์ชันให้ WebLLM ในเครื่องประมวลผลคำตอบ
+  async function generateLocalAIResponse(originalPrompt, lastMessage, round) {
+    appendMessage("ระบบ", `${myRole} (เครื่องนี้) กำลังประมวลผล...`, "system");
 
-    // System Prompt สำหรับกำหนดบทบาทในการระดมความคิด
-    const systemPrompt = `คุณคือ AI Agent สายวิเคราะห์ ร่วมมือกับ AI อีกเครื่องเพื่อช่วยกันหาคำตอบที่ดีที่สุด
-คำถามหลักจาก User คือ: "${originalPrompt}"
-ข้อความล่าสุดจาก AI อีกฝั่งคือ: "${previousMessage}"
-หน้าที่ของคุณ: ให้ความคิดเห็นเพิ่มเติม ข้อมูลเสริม หรือจุดที่คิดว่ายังขาดไปอย่างสั้นๆ และกระชับ (ไม่เกิน 3-4 ประโยค)`;
+    const systemPrompt = `คุณคือ ${myRole} ร่วมมือกับ AI อีกเครื่องเพื่อช่วยกันหาคำตอบที่ดีที่สุด
+โจทย์หลักจากผู้ใช้: "${originalPrompt}"
+ความเห็นล่าสุดจาก AI อีกฝั่ง: "${lastMessage}"
+หน้าที่ของคุณ: ให้ความคิดเห็นเสริม ข้อคิดเห็นโต้แย้ง หรือจุดที่ยังขาดไปอย่างสั้นๆ กระชับ (ไม่เกิน 3 ประโยค)`;
 
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: "โปรดวิเคราะห์และแสดงความคิดเห็นต่อ" }
-    ];
+    const completion = await engine.chat.completions.create({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: "โปรดวิเคราะห์และแสดงความคิดเห็น" }
+      ]
+    });
 
-    const reply = await engine.chat.completions.create({ messages });
-    const aiResponse = reply.choices[0].message.content;
+    const aiText = completion.choices[0].message.content;
 
-    appendLog(agentName, aiResponse, 'agent-a');
+    // 1. แสดงคำตอบของ AI ตัวเองบนหน้าจอเรา
+    appendMessage(`${myRole} (เครื่องนี้)`, aiText, "my-agent");
 
-    // ส่งข้อความประมวลผลสำเร็จไปหาอีกฝั่งผ่าน PeerJS
-    if (conn && conn.open) {
-      conn.send({
-        type: 'agent_think',
-        originalPrompt: originalPrompt,
-        content: aiResponse,
-        round: round
-      });
-    }
+    // 2. ส่งคำตอบไปแสดงที่หน้าจอฝั่งเพื่อน และกระตุ้นให้ AI ฝั่งโน้นทำงานต่อ
+    conn.send({
+      type: 'AI_SPEECH',
+      agentRole: myRole,
+      text: aiText,
+      originalPrompt: originalPrompt,
+      round: round
+    });
   }
 
-  function appendLog(sender, text, type) {
+  // ฟังก์ชันช่วยแสดงผลบน UI
+  function appendMessage(sender, text, styleClass) {
     const msgDiv = document.createElement('div');
-    msgDiv.className = `msg ${type}`;
-    msgDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
-    chatLog.appendChild(msgDiv);
-    chatLog.scrollTop = chatLog.scrollHeight;
+    msgDiv.className = `msg ${styleClass}`;
+    
+    if (styleClass === 'system' || styleClass === 'user-prompt') {
+      msgDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+    } else {
+      msgDiv.innerHTML = `<strong>${sender}:</strong><br>${text}`;
+    }
+
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
   }
 </script>
 
