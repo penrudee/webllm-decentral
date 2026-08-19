@@ -384,7 +384,9 @@
           { role: "system", content: systemPrompt },
           { role: "user", content: userContent }
         ],
-        temperature: 0.3
+        temperature: 0.6,
+        repetition_penalty: 1.15,  
+        top_p: 0.9
       });
 
       const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
@@ -455,7 +457,9 @@ ${peersThoughtText}
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.2
+        temperature: 0.6,
+        repetition_penalty: 1.15,  // 🟢 ห้ามพูดคำซ้ำ (ค่าระหว่าง 1.1 - 1.2 กำลังดี)
+        top_p: 0.9
       });
 
       const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
@@ -498,7 +502,9 @@ ${debateSummary}
     try {
       const completion = await engine.chat.completions.create({
         messages: [{ role: "user", content: synthesisPrompt }],
-        temperature: 0.1
+        temperature: 0.1,
+        repetition_penalty: 1.15,  // 🟢 ห้ามพูดคำซ้ำ (ค่าระหว่าง 1.1 - 1.2 กำลังดี)
+        top_p: 0.9
       });
 
       const finalText = completion.choices[0].message.content;
