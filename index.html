@@ -3,36 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>P2P AI Chat with Speed Benchmark</title>
+  <title>Synchronized P2P AI Agents with Model Selector</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: #f0f2f5; padding: 15px; display: flex; justify-content: center; margin: 0; }
-    .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 600px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 620px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     h2 { margin: 0 0 15px 0; color: #1877f2; text-align: center; }
     .box { background: #f7f8fa; border: 1px solid #e4e6eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
     .my-id { font-family: monospace; font-weight: bold; color: #1877f2; background: #e7f3ff; padding: 4px 8px; border-radius: 4px; }
     
-    input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccd0d5; border-radius: 8px; margin-bottom: 8px; font-size: 0.95rem; }
+    select, input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccd0d5; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; background-color: #fff; }
     .btn { background: #1877f2; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
     .btn:disabled { background: #e4e6eb; color: #bcc0c4; cursor: not-allowed; }
     .btn-success { background: #42b72a; }
     
     .chat-box { height: 380px; overflow-y: auto; border: 1px solid #e4e6eb; padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }
-    .msg { padding: 10px 14px; border-radius: 10px; max-width: 85%; font-size: 0.9rem; line-height: 1.4; word-break: break-word; position: relative; }
+    .msg { padding: 10px 14px; border-radius: 10px; max-width: 85%; font-size: 0.9rem; line-height: 1.4; word-break: break-word; }
     
-    /* สไตล์การแสดงผล */
     .msg.system { background: #e4e6eb; color: #4b4f56; align-self: center; font-size: 0.8rem; border-radius: 20px; padding: 4px 12px; }
     .msg.user-prompt { background: #1877f2; color: #fff; align-self: center; text-align: center; width: 90%; font-weight: 500; }
     .msg.my-agent { background: #e7f3ff; color: #050505; align-self: flex-start; border-left: 4px solid #1877f2; }
     .msg.peer-agent { background: #f0f2f5; color: #050505; align-self: flex-end; border-right: 4px solid #42b72a; }
 
-    /* ป้ายแสดงสถิติความเร็ว (Benchmark Badge) */
-    .perf-badge {
+    /* ป้ายแสดงข้อมูล Benchmark & ชื่อโมเดล */
+    .meta-badge {
       display: inline-block;
       margin-top: 6px;
-      padding: 2px 8px;
-      font-size: 0.75rem;
+      padding: 3px 8px;
+      font-size: 0.73rem;
       font-family: monospace;
       font-weight: bold;
       border-radius: 12px;
@@ -41,28 +40,60 @@
     }
     
     .status { font-size: 0.82rem; color: #606770; margin-top: 6px; font-weight: 600; text-align: center; }
+    
+    /* Active Model Header Badge */
+    .active-model-bar {
+      background: #e7f3ff;
+      border: 1px solid #1877f2;
+      color: #1877f2;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>🤖 Synchronized AI + Benchmark</h2>
+  <h2>🤖 Synchronized AI + Model Selector</h2>
 
+  <!-- ส่วนเลือกโมเดล -->
+  <div class="box">
+    <label for="model-select"><strong>เลือกโมเดล AI (Model):</strong></label>
+    <select id="model-select">
+      <option value="Qwen1.5-0.5B-Chat-q4f16_1-MLC" selected>🟢 Qwen 1.5 0.5B (แนะนำ! เบามาก ไม่ค้างแน่นอน)</option>
+      <option value="SmolLM-360M-Instruct-q4f16_1-MLC">🔵 SmolLM 360M (เบาจิ๋วพิเศษ เหมาะกับการ์ดจอเบาๆ)</option>
+      <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">🟡 Llama 3.2 1B (ฉลาดขึ้น แต่ใช้ VRAM ปานกลาง)</option>
+      <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">🔴 Qwen 2.5 1.5B (ฉลาดมาก ต้องการ VRAM สเปกดี)</option>
+    </select>
+    
+    <button id="init-model-btn" class="btn">1. โหลดโมเดล WebLLM</button>
+    <div id="model-status" class="status">สถานะ: กดปุ่มด้านบนเพื่อโหลดโมเดล</div>
+  </div>
+
+  <!-- ส่วนเชื่อมต่อ P2P -->
   <div class="box">
     <div><strong>Peer ID ของคุณ:</strong> <span id="my-id" class="my-id">กำลังสร้าง ID...</span></div>
-    <div id="model-status" class="status">สถานะ: รอโหลดโมเดล AI</div>
-    <button id="init-model-btn" class="btn" style="margin-top: 8px;">1. โหลดโมเดล WebLLM</button>
+    <div style="margin-top: 8px;">
+      <input type="text" id="target-id" placeholder="วาง Peer ID ของเพื่อนที่นี่">
+      <button id="connect-btn" class="btn">2. เชื่อมต่อ P2P หาเพื่อน</button>
+    </div>
   </div>
 
-  <div class="box">
-    <input type="text" id="target-id" placeholder="วาง Peer ID ของเพื่อนที่นี่">
-    <button id="connect-btn" class="btn" disabled>2. เชื่อมต่อ P2P</button>
+  <!-- แถบแสดงโมเดลที่ใช้งานอยู่ปัจจุบัน -->
+  <div id="active-model-display" class="active-model-bar" style="display: none;">
+    📌 โมเดลเครื่องนี้: <span id="current-model-name">-</span>
   </div>
 
+  <!-- หน้าจอแชท -->
   <div class="chat-box" id="chat-box"></div>
 
+  <!-- ส่วนส่งโจทย์ -->
   <div style="margin-top: 12px;">
-    <input type="text" id="user-input" placeholder="พิมพ์โจทย์ให้ AI ช่วยกันวิเคราะห์...">
+    <input type="text" id="user-input" placeholder="พิมพ์โจทย์ให้ AI ทั้งสองฝั่งช่วยกันวิเคราะห์..." disabled>
     <button id="send-btn" class="btn btn-success" disabled>🚀 เริ่มให้ AI ทำงาน</button>
   </div>
 </div>
@@ -70,23 +101,27 @@
 <script type="module">
   import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
-  const MODEL_NAME = "Qwen1.5-0.5B-Chat-q4f16_1-MLC";
   const MAX_ROUNDS = 3;
 
   let engine = null;
   let peer = null;
   let conn = null;
   let myRole = "Agent A";
+  let activeModelName = "";
 
   const myIdEl = document.getElementById('my-id');
-  const modelStatusEl = document.getElementById('model-status');
+  const modelSelect = document.getElementById('model-select');
   const initModelBtn = document.getElementById('init-model-btn');
+  const modelStatusEl = document.getElementById('model-status');
   const targetIdInput = document.getElementById('target-id');
   const connectBtn = document.getElementById('connect-btn');
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
   const chatBox = document.getElementById('chat-box');
+  const activeModelDisplay = document.getElementById('active-model-display');
+  const currentModelNameEl = document.getElementById('current-model-name');
 
+  // 1. เริ่มต้น PeerJS
   peer = new Peer();
   peer.on('open', (id) => myIdEl.textContent = id);
 
@@ -97,22 +132,42 @@
     appendMessage("ระบบ", "มีเพื่อนเชื่อมต่อเข้ามาแล้ว!", "system");
   });
 
+  // 2. โหลดโมเดลตามตัวเลือกใน Drop-down
   initModelBtn.onclick = async () => {
+    const selectedModel = modelSelect.value;
     initModelBtn.disabled = true;
-    modelStatusEl.textContent = "กำลังโหลดโมเดล AI...";
+    modelSelect.disabled = true;
+    modelStatusEl.textContent = `กำลังโหลดโมเดล ${selectedModel}...`;
 
     try {
-      engine = await webllm.CreateMLCEngine(MODEL_NAME, {
+      // ทำลาย Engine เก่าออกก่อนป้องกัน Memory ค้าง
+      if (engine) {
+        await engine.unload();
+      }
+
+      engine = await webllm.CreateMLCEngine(selectedModel, {
         initProgressCallback: (p) => modelStatusEl.textContent = p.text
       });
+
+      activeModelName = selectedModel;
+      currentModelNameEl.textContent = selectedModel;
+      activeModelDisplay.style.display = "block";
       modelStatusEl.textContent = "✅ โมเดลพร้อมใช้งาน!";
-      connectBtn.disabled = false;
+      
+      // ปลดล็อกปุ่มส่งถ้าเชื่อมต่อ P2P แล้ว
+      if (conn && conn.open) {
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+      }
     } catch (err) {
-      modelStatusEl.textContent = "❌ เกิดข้อผิดพลาด: " + err.message;
+      console.error(err);
+      modelStatusEl.textContent = "❌ โหลดไม่สำเร็จ: " + err.message;
       initModelBtn.disabled = false;
+      modelSelect.disabled = false;
     }
   };
 
+  // 3. ปุ่มเชื่อมต่อ P2P
   connectBtn.onclick = () => {
     const targetId = targetIdInput.value.trim();
     if (!targetId) return alert('กรุณากรอก Peer ID ของเพื่อน');
@@ -125,8 +180,12 @@
   function setupConnectionEvents() {
     conn.on('open', () => {
       appendMessage("ระบบ", "เชื่อมต่อ P2P สำเร็จ!", "system");
-      userInput.disabled = false;
-      sendBtn.disabled = false;
+      if (engine) {
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+      } else {
+        appendMessage("ระบบ", "อย่าลืมกดปุ่ม '1. โหลดโมเดล WebLLM' เพื่อเริ่มใช้งาน", "system");
+      }
     });
 
     conn.on('data', async (data) => {
@@ -134,9 +193,13 @@
         appendMessage("User", data.prompt, "user-prompt");
       }
       else if (data.type === 'AI_SPEECH') {
-        // แสดงข้อความ AI ของเพื่อน พร้อมตัววัดความเร็วที่ยิงมาจากเครื่องฝั่งโน้น
-        const perfData = { timeTaken: data.timeTaken, tokensPerSec: data.tokensPerSec };
-        appendMessage(data.agentRole, data.text, "peer-agent", perfData);
+        // แสดงข้อความเพื่อน + ชื่อโมเดลที่เครื่องเพื่อนใช้ + สถิติความเร็ว
+        const metaData = { 
+          model: data.modelUsed, 
+          timeTaken: data.timeTaken, 
+          tokensPerSec: data.tokensPerSec 
+        };
+        appendMessage(data.agentRole, data.text, "peer-agent", metaData);
 
         if (data.round < MAX_ROUNDS) {
           await generateLocalAIResponse(data.originalPrompt, data.text, data.round + 1);
@@ -147,9 +210,11 @@
     });
   }
 
+  // 4. เมื่อ User กดส่งโจทย์
   sendBtn.onclick = async () => {
     const prompt = userInput.value.trim();
-    if (!prompt || !engine || !conn) return;
+    if (!engine) return alert('กรุณากดโหลดโมเดลก่อนครับ');
+    if (!prompt || !conn) return;
 
     userInput.value = '';
     appendMessage("User", prompt, "user-prompt");
@@ -158,54 +223,58 @@
     await generateLocalAIResponse(prompt, "เริ่มต้นการสนทนา", 1);
   };
 
-  // ฟังก์ชันคำนวณ Benchmark ความเร็ว
+  // 5. ประมวลผลและส่งข้อมูล Sync
   async function generateLocalAIResponse(originalPrompt, lastMessage, round) {
-    appendMessage("ระบบ", `${myRole} (เครื่องนี้) กำลังคิด...`, "system");
+    appendMessage("ระบบ", `${myRole} (${activeModelName}) กำลังคิด...`, "system");
 
     const systemPrompt = `คุณคือ ${myRole} ช่วยสรุปหรือวิเคราะห์ต่อจากความเห็นล่าสุด
 โจทย์หลัก: "${originalPrompt}"
 ความเห็นก่อนหน้า: "${lastMessage}"
 ตอบสั้นๆ ไม่เกิน 3 ประโยค`;
 
-    // ⏱️ 1. เริ่มจับเวลา
     const startTime = performance.now();
 
-    const completion = await engine.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: "โปรดแสดงความคิดเห็น" }
-      ]
-    });
+    try {
+      const completion = await engine.chat.completions.create({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "โปรดแสดงความคิดเห็น" }
+        ]
+      });
 
-    // ⏱️ 2. หยุดจับเวลา
-    const endTime = performance.now();
-    const timeTakenSec = ((endTime - startTime) / 1000).toFixed(2);
+      const endTime = performance.now();
+      const timeTakenSec = ((endTime - startTime) / 1000).toFixed(2);
+      const aiText = completion.choices[0].message.content;
 
-    const aiText = completion.choices[0].message.content;
-    
-    // ⚡ 3. คำนวณ Tokens/sec
-    // อ่านจำนวน Token จาก API (หากไม่มีให้ใช้อัตราส่วนประมาณการ 4 ตัวอักษร ~= 1 Token)
-    const generatedTokens = completion.usage?.completion_tokens || Math.ceil(aiText.length / 4);
-    const tokensPerSec = (generatedTokens / (timeTakenSec > 0 ? timeTakenSec : 0.001)).toFixed(1);
+      const generatedTokens = completion.usage?.completion_tokens || Math.ceil(aiText.length / 4);
+      const tokensPerSec = (generatedTokens / (timeTakenSec > 0 ? timeTakenSec : 0.001)).toFixed(1);
 
-    const perfData = { timeTaken: timeTakenSec, tokensPerSec: tokensPerSec };
+      const metaData = { model: activeModelName, timeTaken: timeTakenSec, tokensPerSec: tokensPerSec };
 
-    // แสดงบนหน้าจอเรา
-    appendMessage(`${myRole} (เครื่องนี้)`, aiText, "my-agent", perfData);
+      // แสดงบนหน้าจอเรา
+      appendMessage(`${myRole} (เครื่องนี้)`, aiText, "my-agent", metaData);
 
-    // ส่งข้อความ + สถิติความเร็ว ไปให้เพื่อนดูด้วย
-    conn.send({
-      type: 'AI_SPEECH',
-      agentRole: myRole,
-      text: aiText,
-      originalPrompt: originalPrompt,
-      round: round,
-      timeTaken: timeTakenSec,
-      tokensPerSec: tokensPerSec
-    });
+      // ส่งไปแสดงที่ฝั่งเพื่อนพร้อมส่งชื่อโมเดลไปด้วย
+      if (conn && conn.open) {
+        conn.send({
+          type: 'AI_SPEECH',
+          agentRole: myRole,
+          modelUsed: activeModelName,
+          text: aiText,
+          originalPrompt: originalPrompt,
+          round: round,
+          timeTaken: timeTakenSec,
+          tokensPerSec: tokensPerSec
+        });
+      }
+
+    } catch (err) {
+      console.error("WebGPU Error:", err);
+      appendMessage("ระบบ ❌ เกิดข้อผิดพลาด", `การ์ดจอประมวลผลไม่ไหว: ${err.message || err}`, "system");
+    }
   }
 
-  function appendMessage(sender, text, styleClass, perf = null) {
+  function appendMessage(sender, text, styleClass, meta = null) {
     const msgDiv = document.createElement('div');
     msgDiv.className = `msg ${styleClass}`;
     
@@ -215,9 +284,9 @@
       htmlContent = `<strong>${sender}:</strong> ${text}`;
     }
 
-    // หากมีข้อมูล Performance ให้เพิ่มป้าย Benchmark
-    if (perf) {
-      htmlContent += `<br><span class="perf-badge">⚡ ${perf.tokensPerSec} tok/s | ⏱️ ${perf.timeTaken}s</span>`;
+    // เพิ่ม Badge แสดงชื่อโมเดล + สถิติความเร็ว
+    if (meta) {
+      htmlContent += `<br><span class="meta-badge">🧠 ${meta.model} | ⚡ ${meta.tokensPerSec} tok/s | ⏱️ ${meta.timeTaken}s</span>`;
     }
 
     msgDiv.innerHTML = htmlContent;
