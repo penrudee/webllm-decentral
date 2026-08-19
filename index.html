@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Swarm AI: RAG + CoT Multi-Round Debate</title>
+  <title>Swarm AI: RAG + CoT Multi-Round Debate (fp32/q4f32 Compatible)</title>
   <!-- PeerJS -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <!-- QRCode Generator -->
@@ -61,14 +61,14 @@
     <div style="font-size: 0.75rem; color: #65676b;">ระบบจะแบ่งข้อความนี้เป็น Chunks และดึงส่วนที่เกี่ยวข้องที่สุดส่งให้ AI ใน Swarm อ้างอิง</div>
   </div>
 
-  <!-- 2. เลือกโมเดล AI -->
+  <!-- 2. เลือกโมเดล AI (ปรับใช้เฉพาะ q4f32_1 / 32-bit Math) -->
   <div class="box">
-    <label for="model-select"><strong>เลือกโมเดล AI ในเครื่องนี้:</strong></label>
+    <label for="model-select"><strong>เลือกโมเดล AI ในเครื่องนี้ (q4f32 Format Only):</strong></label>
     <select id="model-select">
-      <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>🟢 Qwen 2.5 0.5B (แนะนำ! เบา เร็ว เสถียร)</option>
-      <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">🔵 SmolLM2 360M (เบาจิ๋วพิเศษ)</option>
-      <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">🟡 Llama 3.2 1B (ระดับปานกลาง)</option>
-      <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">🔴 Qwen 2.5 1.5B (ฉลาดขึ้น)</option>
+      <option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC" selected>🟢 Qwen 2.5 0.5B (q4f32_1 - แนะนำ! เสถียรสูง)</option>
+      <option value="SmolLM2-360M-Instruct-q4f32_1-MLC">🔵 SmolLM2 360M (q4f32_1 - เบาจิ๋วพิเศษ)</option>
+      <option value="Llama-3.2-1B-Instruct-q4f32_1-MLC">🟡 Llama 3.2 1B (q4f32_1 - ปานกลาง)</option>
+      <option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC">🔴 Qwen 2.5 1.5B (q4f32_1 - แม่นยำสูง)</option>
     </select>
     <button id="init-model-btn" class="btn">1. โหลดโมเดล WebLLM</button>
     <div id="model-status" class="status">สถานะ: กดปุ่มด้านบนเพื่อโหลดโมเดล</div>
@@ -276,18 +276,14 @@
     }
   }
 
-  // ==========================================
-  // 🔍 CLIENT-SIDE RAG RETRIEVAL ENGINE
-  // ==========================================
+  // Client-Side RAG Retrieval Engine
   function retrieveRelevantContext(query, topK = 2) {
     const rawKB = kbInput.value.trim();
     if (!rawKB) return "";
 
-    // 1. Chunking ข้อความตามย่อหน้า
     const chunks = rawKB.split(/\n\n+/).map(c => c.trim()).filter(c => c.length > 5);
     if (chunks.length === 0) return "";
 
-    // 2. คำนวณคะแนน Relevance Score จาก Keyword Match
     const queryTerms = query.toLowerCase().split(/\s+/).filter(t => t.length > 1);
 
     const scoredChunks = chunks.map(chunk => {
@@ -299,16 +295,13 @@
       return { chunk, score };
     });
 
-    // 3. จัดลำดับคัดเลือกเฉพาะ Top-K Chunks ที่มีคะแนนสูงสุด
     scoredChunks.sort((a, b) => b.score - a.score);
     const topResults = scoredChunks.slice(0, topK).map(item => item.chunk);
 
     return topResults.join("\n---\n");
   }
 
-  // ==========================================
-  // 🔄 MULTI-ROUND DEBATE NETWORK HANDLER
-  // ==========================================
+  // Multi-Round Debate Network Handler
   async function handleIncomingNetworkData(data, senderConn) {
     if (data.type === 'START_ROUND_1') {
       currentTaskPrompt = data.prompt;
@@ -342,9 +335,7 @@
     }
   }
 
-  // ==========================================
-  // 🚀 START DEBATE FLOW WITH RAG (HOST)
-  // ==========================================
+  // Start Flow
   sendBtn.onclick = async () => {
     const prompt = userInput.value.trim();
     if (!engine || !prompt) return;
@@ -354,7 +345,6 @@
     round1Responses = [];
     round2Responses = [];
 
-    // ดึงบริบท RAG จาก Knowledge Base
     const retrievedContext = retrieveRelevantContext(prompt);
 
     appendMessage("📢 ประกาศ", `เริ่มกระบวนการ RAG + Debate สำหรับโจทย์: "${prompt}"`, "round-banner");
@@ -363,14 +353,11 @@
       appendMessage("📚 RAG Context (บริบทที่ค้นพบ)", retrievedContext, "rag-info");
     }
 
-    // กระจายโจทย์และ RAG Context ไปยังทุก Node
     broadcastToAll({ type: 'START_ROUND_1', prompt: prompt, retrievedContext: retrievedContext });
     await executeRound1(prompt, retrievedContext);
   };
 
-  // ==========================================
-  // 🧠 ROUND 1: RAG + CoT THINKING
-  // ==========================================
+  // Round 1: CoT
   async function executeRound1(prompt, context) {
     appendMessage("ระบบ", `🧠 [Round 1] ${myNodeName} กำลังคิดคำตอบเบื้องต้นด้วย CoT...`, "system");
 
@@ -434,9 +421,7 @@
     executeRound2(round1Responses);
   }
 
-  // ==========================================
-  // ⚔️ ROUND 2: PEER REVIEW & DEBATE
-  // ==========================================
+  // Round 2: Peer Review
   async function executeRound2(allRound1Data) {
     appendMessage("ระบบ", `🔍 [Round 2] ${myNodeName} กำลังตรวจประเมินคำตอบของ Agents ทั้งหมด...`, "system");
 
@@ -493,9 +478,7 @@ ${peersThoughtText}
     }
   }
 
-  // ==========================================
-  // 👑 FINAL CONSENSUS SYNTHESIS
-  // ==========================================
+  // Final Synthesis
   async function checkRound2Completion() {
     if (round2Responses.length < getOnlineNodesCount()) return;
 
