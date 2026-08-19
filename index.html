@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Synchronized P2P AI Agents with QR Code</title>
+  <title>Multi-Agent P2P Swarm AI (N-Nodes Network)</title>
   <!-- PeerJS -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <!-- QRCode Generator -->
@@ -14,7 +14,7 @@
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: #f0f2f5; padding: 15px; display: flex; justify-content: center; margin: 0; }
-    .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 620px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 680px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     h2 { margin: 0 0 15px 0; color: #1877f2; text-align: center; }
     .box { background: #f7f8fa; border: 1px solid #e4e6eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
     .my-id { font-family: monospace; font-weight: bold; color: #1877f2; background: #e7f3ff; padding: 4px 8px; border-radius: 4px; word-break: break-all; }
@@ -24,15 +24,16 @@
     .btn:disabled { background: #e4e6eb; color: #bcc0c4; cursor: not-allowed; }
     .btn-success { background: #42b72a; }
     .btn-secondary { background: #65676b; }
-    .btn-scan { background: #8b5cf6; } /* สีม่วงสำหรับปุ่มสแกน */
+    .btn-scan { background: #8b5cf6; }
     
-    .chat-box { height: 350px; overflow-y: auto; border: 1px solid #e4e6eb; padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }
-    .msg { padding: 10px 14px; border-radius: 10px; max-width: 85%; font-size: 0.9rem; line-height: 1.4; word-break: break-word; }
+    .chat-box { height: 380px; overflow-y: auto; border: 1px solid #e4e6eb; padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }
+    .msg { padding: 10px 14px; border-radius: 10px; max-width: 88%; font-size: 0.9rem; line-height: 1.4; word-break: break-word; }
     
     .msg.system { background: #e4e6eb; color: #4b4f56; align-self: center; font-size: 0.8rem; border-radius: 20px; padding: 4px 12px; }
     .msg.user-prompt { background: #1877f2; color: #fff; align-self: center; text-align: center; width: 90%; font-weight: 500; }
+    .msg.agent-msg { background: #f0f2f5; color: #050505; align-self: flex-start; border-left: 4px solid #8b5cf6; }
     .msg.my-agent { background: #e7f3ff; color: #050505; align-self: flex-start; border-left: 4px solid #1877f2; }
-    .msg.peer-agent { background: #f0f2f5; color: #050505; align-self: flex-end; border-right: 4px solid #42b72a; }
+    .msg.synthesis { background: #e6f4ea; color: #137333; align-self: center; width: 95%; border: 1px solid #ceead6; border-radius: 12px; }
 
     .meta-badge {
       display: inline-block;
@@ -47,20 +48,8 @@
     }
     
     .status { font-size: 0.82rem; color: #606770; margin-top: 6px; font-weight: 600; text-align: center; }
-    
-    .active-model-bar {
-      background: #e7f3ff;
-      border: 1px solid #1877f2;
-      color: #1877f2;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: bold;
-      margin-bottom: 10px;
-      text-align: center;
-    }
+    .node-count { background: #42b72a; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; float: right; }
 
-    /* สไตล์สำหรับ QR Code & Scanner */
     .qr-container {
       display: flex;
       flex-direction: column;
@@ -79,74 +68,74 @@
 <body>
 
 <div class="card">
-  <h2>📱 Synchronized AI + QR Scanner</h2>
+  <h2>🐝 Multi-Agent Swarm AI (P2P Network)</h2>
 
-  <!-- 1. ส่วนเลือกโมเดล -->
+  <!-- 1. เลือกโมเดล AI -->
   <div class="box">
-    <label for="model-select"><strong>เลือกโมเดล AI (Model):</strong></label>
+    <label for="model-select"><strong>เลือกโมเดล AI ในเครื่องนี้:</strong></label>
     <select id="model-select">
       <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>🟢 Qwen 2.5 0.5B (แนะนำ! เบามาก เสถียรที่สุด)</option>
       <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">🔵 SmolLM2 360M (เบาจิ๋วพิเศษ)</option>
       <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">🟡 Llama 3.2 1B (ระดับปานกลาง)</option>
       <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">🔴 Qwen 2.5 1.5B (ฉลาดขึ้น)</option>
     </select>
-    
     <button id="init-model-btn" class="btn">1. โหลดโมเดล WebLLM</button>
     <div id="model-status" class="status">สถานะ: กดปุ่มด้านบนเพื่อโหลดโมเดล</div>
   </div>
 
-  <!-- 2. ส่วน Peer ID ของเรา + แสดง QR Code -->
+  <!-- 2. ส่วนสร้างห้อง / แสดง ID & QR Code -->
   <div class="box">
-    <div><strong>Peer ID ของคุณ:</strong> <span id="my-id" class="my-id">กำลังสร้าง ID...</span></div>
+    <div>
+      <strong>ID เครื่องนี้ (Node ID):</strong> <span id="my-id" class="my-id">กำลังสร้าง ID...</span>
+      <span id="node-count-badge" class="node-count">1 Node (Single)</span>
+    </div>
     
     <div class="qr-container">
       <div id="qrcode"></div>
-      <div style="font-size: 0.75rem; color: #65676b; margin-top: 5px;">ให้เพื่อนสแกน QR Code นี้เพื่อเชื่อมต่อ</div>
+      <div style="font-size: 0.75rem; color: #65676b; margin-top: 5px;">ยิง QR Code นี้เพื่อดึงเครื่องเข้ากลุ่มช่วยกันคิด</div>
     </div>
   </div>
 
-  <!-- 3. ส่วนเชื่อมต่อ P2P & สแกน QR Code ของเพื่อน -->
+  <!-- 3. ส่วนเชื่อมต่อเข้าห้องเพื่อน (Multi-Nodes) -->
   <div class="box">
-    <label><strong>เชื่อมต่อกับเพื่อน:</strong></label>
-    <input type="text" id="target-id" placeholder="วาง Peer ID หรือใช้ปุ่มสแกนกล้องด้านล่าง">
-    
-    <button id="scan-btn" class="btn btn-scan">📷 สแกน QR Code ของเพื่อน</button>
+    <label><strong>เข้าร่วมห้องเพื่อน (Connect to Host):</strong></label>
+    <input type="text" id="target-id" placeholder="วาง Host Peer ID หรือสแกนกล้องด้านล่าง">
+    <button id="scan-btn" class="btn btn-scan">📷 สแกน QR Code เพื่อเข้าร่วมห้อง</button>
     <button id="stop-scan-btn" class="btn btn-secondary" style="display: none;">❌ ปิดกล้องสแกน</button>
     
-    <!-- ช่องแสดงกล้องสแกน -->
     <div id="reader"></div>
-
-    <button id="connect-btn" class="btn" style="margin-top: 6px;">2. เชื่อมต่อ P2P หาเพื่อน</button>
+    <button id="connect-btn" class="btn">2. เชื่อมต่อเข้าห้อง Multi-Agent</button>
   </div>
 
-  <!-- แถบแสดงโมเดลที่ใช้งานอยู่ -->
-  <div id="active-model-display" class="active-model-bar" style="display: none;">
-    📌 โมเดลเครื่องนี้: <span id="current-model-name">-</span>
-  </div>
-
-  <!-- หน้าจอแชท -->
+  <!-- หน้าจอแชทประมวลผล -->
   <div class="chat-box" id="chat-box"></div>
 
-  <!-- ส่วนส่งโจทย์ -->
+  <!-- ส่วนส่งโจทย์ให้ทุก Agent ช่วยกันคิด -->
   <div style="margin-top: 12px;">
-    <input type="text" id="user-input" placeholder="พิมพ์โจทย์ให้ AI ทั้งสองฝั่งช่วยกันวิเคราะห์..." disabled>
-    <button id="send-btn" class="btn btn-success" disabled>🚀 เริ่มให้ AI ทำงาน</button>
+    <input type="text" id="user-input" placeholder="พิมพ์โจทย์ให้ทุก AI ในเครือข่ายช่วยกันระดมสมอง..." disabled>
+    <button id="send-btn" class="btn btn-success" disabled>🚀 ส่งโจทย์ให้ AI ทุกเครื่องช่วยกันคิด</button>
   </div>
 </div>
 
 <script type="module">
   import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
-  const MAX_ROUNDS = 3;
-
   let engine = null;
   let peer = null;
-  let conn = null;
-  let myRole = "Agent A";
+  let isHost = true; // เครื่องนี้เป็น Host หรือไม่
+  let hostConnection = null; // สำหรับ Client ไว้คุยกับ Host
+  let clientConnections = []; // สำหรับ Host ไว้เก็บรายชื่อ Client ทั้งหมด (N เครื่อง)
+  
   let activeModelName = "";
   let html5QrcodeScanner = null;
+  let myNodeName = "Host Agent";
+
+  // เก็บคำตอบชั่วคราวเพื่อทำ Consensus สรุปภาพรวม
+  let collectedResponses = []; 
+  let currentTaskPrompt = "";
 
   const myIdEl = document.getElementById('my-id');
+  const nodeCountBadge = document.getElementById('node-count-badge');
   const modelSelect = document.getElementById('model-select');
   const initModelBtn = document.getElementById('init-model-btn');
   const modelStatusEl = document.getElementById('model-status');
@@ -157,54 +146,63 @@
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
   const chatBox = document.getElementById('chat-box');
-  const activeModelDisplay = document.getElementById('active-model-display');
-  const currentModelNameEl = document.getElementById('current-model-name');
 
-  // 1. เริ่มต้น PeerJS และสร้าง QR Code ของตัวเอง
+  // 1. เริ่มต้น PeerJS และสร้าง QR Code
   peer = new Peer();
   peer.on('open', (id) => {
     myIdEl.textContent = id;
-    
-    // สร้าง QR Code จาก Peer ID ของเรา
     document.getElementById("qrcode").innerHTML = "";
-    new QRCode(document.getElementById("qrcode"), {
-      text: id,
-      width: 128,
-      height: 128
+    new QRCode(document.getElementById("qrcode"), { text: id, width: 120, height: 120 });
+  });
+
+  // ฝั่ง Host: เมื่อมี Client เชื่อมต่อเข้ามาเพิ่ม (ต่อได้ N เครื่อง)
+  peer.on('connection', (conn) => {
+    isHost = true;
+    clientConnections.push(conn);
+    const agentIndex = clientConnections.length;
+    
+    updateNodeCountUI();
+    appendMessage("ระบบ", `🤝 Agent #${agentIndex} (${conn.peer.substring(0,6)}...) เข้าร่วมกลุ่มแล้ว`, "system");
+
+    // แจ้ง Agent ใหม่ว่าเขาได้ชื่ออะไร
+    conn.on('open', () => {
+      conn.send({ type: 'ASSIGN_ROLE', roleName: `Agent #${agentIndex}` });
+    });
+
+    // รับข้อมูลจาก Client แต่ละเครื่อง
+    conn.on('data', async (data) => {
+      handleIncomingNetworkData(data, conn);
+    });
+
+    conn.on('close', () => {
+      clientConnections = clientConnections.filter(c => c !== conn);
+      updateNodeCountUI();
+      appendMessage("ระบบ", "มี Agent ออกจากกลุ่มไป", "system");
     });
   });
 
-  peer.on('connection', (incomingConn) => {
-    conn = incomingConn;
-    myRole = "Agent B";
-    setupConnectionEvents();
-    appendMessage("ระบบ", "มีเพื่อนเชื่อมต่อเข้ามาแล้ว!", "system");
-  });
+  function updateNodeCountUI() {
+    const total = isHost ? clientConnections.length + 1 : 2;
+    nodeCountBadge.textContent = `${total} Nodes Active`;
+  }
 
-  // 2. ระบบสแกน QR Code จากกล้อง
+  // 2. ระบบสแกน QR Code
   scanBtn.onclick = () => {
-    const readerDiv = document.getElementById('reader');
-    readerDiv.style.display = 'block';
+    document.getElementById('reader').style.display = 'block';
     scanBtn.style.display = 'none';
     stopScanBtn.style.display = 'block';
 
     html5QrcodeScanner = new Html5Qrcode("reader");
     html5QrcodeScanner.start(
-      { facingMode: "environment" }, // บังคับใช้กล้องหลังบนมือถือ
-      { fps: 10, qrbox: { width: 200, height: 200 } },
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 180, height: 180 } },
       (decodedText) => {
-        // เมื่อสแกนเจอข้อความ
         targetIdInput.value = decodedText;
         stopScanner();
-        appendMessage("ระบบ", "สแกน QR Code สำเร็จ! ได้รับ Peer ID แล้ว", "system");
+        appendMessage("ระบบ", "สแกน QR Code สำเร็จ!", "system");
       },
-      (errorMessage) => {
-        // ข้ามข้อผิดพลาดระหว่างสแกนหาเป้าหมาย
-      }
-    ).catch(err => {
-      alert("ไม่สามารถเปิดกล้องได้: " + err);
-      stopScanner();
-    });
+      () => {}
+    ).catch(err => alert("ไม่สามารถเปิดกล้องได้: " + err));
   };
 
   stopScanBtn.onclick = () => stopScanner();
@@ -215,7 +213,7 @@
         document.getElementById('reader').style.display = 'none';
         scanBtn.style.display = 'block';
         stopScanBtn.style.display = 'none';
-      }).catch(err => console.error(err));
+      });
     }
   }
 
@@ -234,14 +232,9 @@
       });
 
       activeModelName = selectedModel;
-      currentModelNameEl.textContent = selectedModel;
-      activeModelDisplay.style.display = "block";
       modelStatusEl.textContent = "✅ โมเดลพร้อมใช้งาน!";
-      
-      if (conn && conn.open) {
-        userInput.disabled = false;
-        sendBtn.disabled = false;
-      }
+      userInput.disabled = false;
+      sendBtn.disabled = false;
     } catch (err) {
       console.error(err);
       modelStatusEl.textContent = "❌ โหลดไม่สำเร็จ: " + err.message;
@@ -250,77 +243,94 @@
     }
   };
 
-  // 4. ปุ่มเชื่อมต่อ P2P
+  // 4. เชื่อมต่อเข้าร่วมห้อง Host
   connectBtn.onclick = () => {
     const targetId = targetIdInput.value.trim();
-    if (!targetId) return alert('กรุณากรอกหรือสแกน Peer ID ของเพื่อนก่อนครับ');
+    if (!targetId) return alert('กรุณากรอกหรือสแกน Host Peer ID ก่อนครับ');
     
-    conn = peer.connect(targetId);
-    myRole = "Agent A";
-    setupConnectionEvents();
+    isHost = false;
+    hostConnection = peer.connect(targetId);
+
+    hostConnection.on('open', () => {
+      appendMessage("ระบบ", "เข้าร่วมห้อง Host สำเร็จ!", "system");
+      nodeCountBadge.textContent = "Connected to Host";
+    });
+
+    hostConnection.on('data', async (data) => {
+      handleIncomingNetworkData(data, hostConnection);
+    });
   };
 
-  function setupConnectionEvents() {
-    conn.on('open', () => {
-      appendMessage("ระบบ", "เชื่อมต่อ P2P สำเร็จ!", "system");
-      if (engine) {
-        userInput.disabled = false;
-        sendBtn.disabled = false;
-      } else {
-        appendMessage("ระบบ", "อย่าลืมกดปุ่ม '1. โหลดโมเดล WebLLM' เพื่อเริ่มใช้งาน", "system");
-      }
-    });
-
-    conn.on('data', async (data) => {
-      if (data.type === 'START_PROMPT') {
-        appendMessage("User", data.prompt, "user-prompt");
-      }
-      else if (data.type === 'AI_SPEECH') {
-        const metaData = { 
-          model: data.modelUsed, 
-          timeTaken: data.timeTaken, 
-          tokensPerSec: data.tokensPerSec 
-        };
-        appendMessage(data.agentRole, data.text, "peer-agent", metaData);
-
-        if (data.round < MAX_ROUNDS) {
-          await generateLocalAIResponse(data.originalPrompt, data.text, data.round + 1);
-        } else {
-          appendMessage("ระบบ", "จบการสนทนา (ครบกำหนดรอบ)", "system");
-        }
-      }
-    });
+  // 5. บรอดแคสต์ข้อมูลหาทุกเครื่องใน Network
+  function broadcastToAll(data) {
+    if (isHost) {
+      clientConnections.forEach(c => { if(c.open) c.send(data); });
+    } else if (hostConnection && hostConnection.open) {
+      hostConnection.send(data);
+    }
   }
 
-  // 5. ส่งโจทย์ให้ AI ทำงาน
+  // 6. จัดการรับข้อความจาก Network
+  async function handleIncomingNetworkData(data, senderConn) {
+    if (data.type === 'ASSIGN_ROLE') {
+      myNodeName = data.roleName;
+      appendMessage("ระบบ", `เครื่องนี้ได้รับมอบหมายชื่อเป็น: ${myNodeName}`, "system");
+    }
+    else if (data.type === 'BROADCAST_PROMPT') {
+      // ได้รับโจทย์จาก Host -> ทุกเครื่องเริ่มคิดไอเดียตัวเองทันที (Parallel)
+      currentTaskPrompt = data.prompt;
+      appendMessage("User", data.prompt, "user-prompt");
+      await processLocalThought(data.prompt);
+    }
+    else if (data.type === 'AGENT_RESPONSE') {
+      // เครื่องอื่นส่งคำตอบกลับมา
+      const meta = { model: data.modelUsed, timeTaken: data.timeTaken, tokensPerSec: data.tokensPerSec };
+      appendMessage(data.agentName, data.text, "agent-msg", meta);
+
+      // ถ้าเป็น Host ให้สะสมไอเดียไว้รอยกมาสังเคราะห์สรุป (Consensus)
+      if (isHost) {
+        collectedResponses.push({ agent: data.agentName, text: data.text });
+        checkAndSynthesizeConsensus();
+      }
+    }
+    else if (data.type === 'FINAL_SYNTHESIS') {
+      // ได้รับบทสรุปภาพรวมจาก Host
+      appendMessage("👑 คำตอบสังเคราะห์ภาพรวม (Swarm Consensus)", data.text, "synthesis");
+    }
+  }
+
+  // 7. เมื่อผู้ใช้กดส่งโจทย์ (Host เป็นคนเริ่ม)
   sendBtn.onclick = async () => {
     const prompt = userInput.value.trim();
     if (!engine) return alert('กรุณากดโหลดโมเดลก่อนครับ');
-    if (!prompt || !conn) return;
+    if (!prompt) return;
 
     userInput.value = '';
-    appendMessage("User", prompt, "user-prompt");
-    conn.send({ type: 'START_PROMPT', prompt: prompt });
+    currentTaskPrompt = prompt;
+    collectedResponses = [];
 
-    await generateLocalAIResponse(prompt, "เริ่มต้นการสนทนา", 1);
+    appendMessage("User", prompt, "user-prompt");
+
+    // บรอดแคสต์โจทย์ไปให้ทุก Node ในห้องทำพร้อมกัน
+    broadcastToAll({ type: 'BROADCAST_PROMPT', prompt: prompt });
+
+    // เครื่องนี้เองก็เริ่มคิดคำตอบด้วย
+    await processLocalThought(prompt);
   };
 
-  async function generateLocalAIResponse(originalPrompt, lastMessage, round) {
-    appendMessage("ระบบ", `${myRole} (${activeModelName}) กำลังคิด...`, "system");
+  // 8. ให้ AI เครื่องนี้คิดประมวลผลคำตอบ
+  async function processLocalThought(prompt) {
+    appendMessage("ระบบ", `${myNodeName} (${activeModelName}) กำลังคิด...`, "system");
 
-    const systemPrompt = `คุณคือ ${myRole} ช่วยสรุปหรือวิเคราะห์ต่อจากความเห็นล่าสุด
-โจทย์หลัก: "${originalPrompt}"
-ความเห็นก่อนหน้า: "${lastMessage}"
+    const systemPrompt = `คุณคือ ${myNodeName} จงให้คำตอบหรือวิเคราะห์โจทย์ต่อไปนี้อย่างกระชับ
+โจทย์: "${prompt}"
 ตอบสั้นๆ ไม่เกิน 3 ประโยค`;
 
     const startTime = performance.now();
 
     try {
       const completion = await engine.chat.completions.create({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "โปรดแสดงความคิดเห็น" }
-        ]
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: "เสนอไอเดียของคุณ" }]
       });
 
       const endTime = performance.now();
@@ -330,26 +340,60 @@
       const generatedTokens = completion.usage?.completion_tokens || Math.ceil(aiText.length / 4);
       const tokensPerSec = (generatedTokens / (timeTakenSec > 0 ? timeTakenSec : 0.001)).toFixed(1);
 
-      const metaData = { model: activeModelName, timeTaken: timeTakenSec, tokensPerSec: tokensPerSec };
+      const meta = { model: activeModelName, timeTaken: timeTakenSec, tokensPerSec: tokensPerSec };
+      appendMessage(`${myNodeName} (เครื่องนี้)`, aiText, "my-agent", meta);
 
-      appendMessage(`${myRole} (เครื่องนี้)`, aiText, "my-agent", metaData);
-
-      if (conn && conn.open) {
-        conn.send({
-          type: 'AI_SPEECH',
-          agentRole: myRole,
+      if (isHost) {
+        collectedResponses.push({ agent: myNodeName, text: aiText });
+        checkAndSynthesizeConsensus();
+      } else {
+        // ส่งคำตอบกลับไปหา Host
+        broadcastToAll({
+          type: 'AGENT_RESPONSE',
+          agentName: myNodeName,
           modelUsed: activeModelName,
           text: aiText,
-          originalPrompt: originalPrompt,
-          round: round,
           timeTaken: timeTakenSec,
           tokensPerSec: tokensPerSec
         });
       }
 
     } catch (err) {
-      console.error("WebGPU Error:", err);
-      appendMessage("ระบบ ❌ เกิดข้อผิดพลาด", `การ์ดจอประมวลผลไม่ไหว: ${err.message || err}`, "system");
+      console.error(err);
+      appendMessage("ระบบ ❌ เกิดข้อผิดพลาด", err.message || err, "system");
+    }
+  }
+
+  // 9. สังเคราะห์สรุปคำตอบรวม (Consensus)
+  async function checkAndSynthesizeConsensus() {
+    const totalExpected = clientConnections.length + 1; // จำนวนเครื่องทั้งหมด
+    if (collectedResponses.length < totalExpected) return; // รอคำตอบให้ครบก่อน
+
+    appendMessage("ระบบ", "🤖 ทุก Agent คิดเสร็จแล้ว! Host กำลังรวบรวมสังเคราะห์คำตอบ...", "system");
+
+    let allIdeas = collectedResponses.map(r => `- ${r.agent}: ${r.text}`).join("\n");
+    const synthesisPrompt = `คุณคือ Host AI หน้าที่ของคุณคือรวบรวมมุมมองจาก Agents ทั้งหมด แล้วสรุปออกมาเป็นคำตอบที่ดีที่สุดคำตอบเดียว
+โจทย์เดิม: "${currentTaskPrompt}"
+ความคิดเห็นจาก Agents ต่างๆ:
+${allIdeas}
+
+จงสรุปคำตอบสุดท้ายที่สมบูรณ์และเป็นเอกภาพที่สุด (ไม่เกิน 4 ประโยค):`;
+
+    try {
+      const completion = await engine.chat.completions.create({
+        messages: [{ role: "user", content: synthesisPrompt }]
+      });
+
+      const finalSynthesizedText = completion.choices[0].message.content;
+
+      // แสดงบน Host
+      appendMessage("👑 คำตอบสังเคราะห์ภาพรวม (Swarm Consensus)", finalSynthesizedText, "synthesis");
+
+      // ส่งสรุปผลลัพธ์สุดท้ายไปให้ทุก Client บน Network
+      broadcastToAll({ type: 'FINAL_SYNTHESIS', text: finalSynthesizedText });
+
+    } catch (err) {
+      console.error(err);
     }
   }
 
