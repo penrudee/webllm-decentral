@@ -3,22 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Synchronized P2P AI Agents with Model Selector</title>
+  <title>Synchronized P2P AI Agents with QR Code</title>
+  <!-- PeerJS -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <!-- QRCode Generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- HTML5 QR Code Scanner -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: #f0f2f5; padding: 15px; display: flex; justify-content: center; margin: 0; }
     .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 620px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     h2 { margin: 0 0 15px 0; color: #1877f2; text-align: center; }
     .box { background: #f7f8fa; border: 1px solid #e4e6eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
-    .my-id { font-family: monospace; font-weight: bold; color: #1877f2; background: #e7f3ff; padding: 4px 8px; border-radius: 4px; }
+    .my-id { font-family: monospace; font-weight: bold; color: #1877f2; background: #e7f3ff; padding: 4px 8px; border-radius: 4px; word-break: break-all; }
     
     select, input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccd0d5; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; background-color: #fff; }
-    .btn { background: #1877f2; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
+    .btn { background: #1877f2; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-bottom: 6px; }
     .btn:disabled { background: #e4e6eb; color: #bcc0c4; cursor: not-allowed; }
     .btn-success { background: #42b72a; }
+    .btn-secondary { background: #65676b; }
+    .btn-scan { background: #8b5cf6; } /* สีม่วงสำหรับปุ่มสแกน */
     
-    .chat-box { height: 380px; overflow-y: auto; border: 1px solid #e4e6eb; padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }
+    .chat-box { height: 350px; overflow-y: auto; border: 1px solid #e4e6eb; padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }
     .msg { padding: 10px 14px; border-radius: 10px; max-width: 85%; font-size: 0.9rem; line-height: 1.4; word-break: break-word; }
     
     .msg.system { background: #e4e6eb; color: #4b4f56; align-self: center; font-size: 0.8rem; border-radius: 20px; padding: 4px 12px; }
@@ -26,7 +34,6 @@
     .msg.my-agent { background: #e7f3ff; color: #050505; align-self: flex-start; border-left: 4px solid #1877f2; }
     .msg.peer-agent { background: #f0f2f5; color: #050505; align-self: flex-end; border-right: 4px solid #42b72a; }
 
-    /* ป้ายแสดงข้อมูล Benchmark & ชื่อโมเดล */
     .meta-badge {
       display: inline-block;
       margin-top: 6px;
@@ -41,7 +48,6 @@
     
     .status { font-size: 0.82rem; color: #606770; margin-top: 6px; font-weight: 600; text-align: center; }
     
-    /* Active Model Header Badge */
     .active-model-bar {
       background: #e7f3ff;
       border: 1px solid #1877f2;
@@ -53,18 +59,33 @@
       margin-bottom: 10px;
       text-align: center;
     }
+
+    /* สไตล์สำหรับ QR Code & Scanner */
+    .qr-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-top: 10px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px dashed #ccd0d5;
+    }
+    #qrcode img { margin: 0 auto; }
+    #reader { width: 100%; max-width: 320px; margin: 10px auto; display: none; border-radius: 8px; overflow: hidden; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>🤖 Synchronized AI + Model Selector</h2>
+  <h2>📱 Synchronized AI + QR Scanner</h2>
 
-  <!-- ส่วนเลือกโมเดล -->
-  <div class="box">    
+  <!-- 1. ส่วนเลือกโมเดล -->
+  <div class="box">
     <label for="model-select"><strong>เลือกโมเดล AI (Model):</strong></label>
     <select id="model-select">
-      <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>🟢 Qwen 2.5 0.5B (แนะนำ! เบามาก ไม่ค้างแน่นอน)</option>
+      <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC" selected>🟢 Qwen 2.5 0.5B (แนะนำ! เบามาก เสถียรที่สุด)</option>
       <option value="SmolLM2-360M-Instruct-q4f16_1-MLC">🔵 SmolLM2 360M (เบาจิ๋วพิเศษ)</option>
       <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">🟡 Llama 3.2 1B (ระดับปานกลาง)</option>
       <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">🔴 Qwen 2.5 1.5B (ฉลาดขึ้น)</option>
@@ -74,16 +95,31 @@
     <div id="model-status" class="status">สถานะ: กดปุ่มด้านบนเพื่อโหลดโมเดล</div>
   </div>
 
-  <!-- ส่วนเชื่อมต่อ P2P -->
+  <!-- 2. ส่วน Peer ID ของเรา + แสดง QR Code -->
   <div class="box">
     <div><strong>Peer ID ของคุณ:</strong> <span id="my-id" class="my-id">กำลังสร้าง ID...</span></div>
-    <div style="margin-top: 8px;">
-      <input type="text" id="target-id" placeholder="วาง Peer ID ของเพื่อนที่นี่">
-      <button id="connect-btn" class="btn">2. เชื่อมต่อ P2P หาเพื่อน</button>
+    
+    <div class="qr-container">
+      <div id="qrcode"></div>
+      <div style="font-size: 0.75rem; color: #65676b; margin-top: 5px;">ให้เพื่อนสแกน QR Code นี้เพื่อเชื่อมต่อ</div>
     </div>
   </div>
 
-  <!-- แถบแสดงโมเดลที่ใช้งานอยู่ปัจจุบัน -->
+  <!-- 3. ส่วนเชื่อมต่อ P2P & สแกน QR Code ของเพื่อน -->
+  <div class="box">
+    <label><strong>เชื่อมต่อกับเพื่อน:</strong></label>
+    <input type="text" id="target-id" placeholder="วาง Peer ID หรือใช้ปุ่มสแกนกล้องด้านล่าง">
+    
+    <button id="scan-btn" class="btn btn-scan">📷 สแกน QR Code ของเพื่อน</button>
+    <button id="stop-scan-btn" class="btn btn-secondary" style="display: none;">❌ ปิดกล้องสแกน</button>
+    
+    <!-- ช่องแสดงกล้องสแกน -->
+    <div id="reader"></div>
+
+    <button id="connect-btn" class="btn" style="margin-top: 6px;">2. เชื่อมต่อ P2P หาเพื่อน</button>
+  </div>
+
+  <!-- แถบแสดงโมเดลที่ใช้งานอยู่ -->
   <div id="active-model-display" class="active-model-bar" style="display: none;">
     📌 โมเดลเครื่องนี้: <span id="current-model-name">-</span>
   </div>
@@ -108,6 +144,7 @@
   let conn = null;
   let myRole = "Agent A";
   let activeModelName = "";
+  let html5QrcodeScanner = null;
 
   const myIdEl = document.getElementById('my-id');
   const modelSelect = document.getElementById('model-select');
@@ -115,15 +152,27 @@
   const modelStatusEl = document.getElementById('model-status');
   const targetIdInput = document.getElementById('target-id');
   const connectBtn = document.getElementById('connect-btn');
+  const scanBtn = document.getElementById('scan-btn');
+  const stopScanBtn = document.getElementById('stop-scan-btn');
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
   const chatBox = document.getElementById('chat-box');
   const activeModelDisplay = document.getElementById('active-model-display');
   const currentModelNameEl = document.getElementById('current-model-name');
 
-  // 1. เริ่มต้น PeerJS
+  // 1. เริ่มต้น PeerJS และสร้าง QR Code ของตัวเอง
   peer = new Peer();
-  peer.on('open', (id) => myIdEl.textContent = id);
+  peer.on('open', (id) => {
+    myIdEl.textContent = id;
+    
+    // สร้าง QR Code จาก Peer ID ของเรา
+    document.getElementById("qrcode").innerHTML = "";
+    new QRCode(document.getElementById("qrcode"), {
+      text: id,
+      width: 128,
+      height: 128
+    });
+  });
 
   peer.on('connection', (incomingConn) => {
     conn = incomingConn;
@@ -132,7 +181,45 @@
     appendMessage("ระบบ", "มีเพื่อนเชื่อมต่อเข้ามาแล้ว!", "system");
   });
 
-  // 2. โหลดโมเดลตามตัวเลือกใน Drop-down
+  // 2. ระบบสแกน QR Code จากกล้อง
+  scanBtn.onclick = () => {
+    const readerDiv = document.getElementById('reader');
+    readerDiv.style.display = 'block';
+    scanBtn.style.display = 'none';
+    stopScanBtn.style.display = 'block';
+
+    html5QrcodeScanner = new Html5Qrcode("reader");
+    html5QrcodeScanner.start(
+      { facingMode: "environment" }, // บังคับใช้กล้องหลังบนมือถือ
+      { fps: 10, qrbox: { width: 200, height: 200 } },
+      (decodedText) => {
+        // เมื่อสแกนเจอข้อความ
+        targetIdInput.value = decodedText;
+        stopScanner();
+        appendMessage("ระบบ", "สแกน QR Code สำเร็จ! ได้รับ Peer ID แล้ว", "system");
+      },
+      (errorMessage) => {
+        // ข้ามข้อผิดพลาดระหว่างสแกนหาเป้าหมาย
+      }
+    ).catch(err => {
+      alert("ไม่สามารถเปิดกล้องได้: " + err);
+      stopScanner();
+    });
+  };
+
+  stopScanBtn.onclick = () => stopScanner();
+
+  function stopScanner() {
+    if (html5QrcodeScanner) {
+      html5QrcodeScanner.stop().then(() => {
+        document.getElementById('reader').style.display = 'none';
+        scanBtn.style.display = 'block';
+        stopScanBtn.style.display = 'none';
+      }).catch(err => console.error(err));
+    }
+  }
+
+  // 3. โหลดโมเดล WebLLM
   initModelBtn.onclick = async () => {
     const selectedModel = modelSelect.value;
     initModelBtn.disabled = true;
@@ -140,10 +227,7 @@
     modelStatusEl.textContent = `กำลังโหลดโมเดล ${selectedModel}...`;
 
     try {
-      // ทำลาย Engine เก่าออกก่อนป้องกัน Memory ค้าง
-      if (engine) {
-        await engine.unload();
-      }
+      if (engine) await engine.unload();
 
       engine = await webllm.CreateMLCEngine(selectedModel, {
         initProgressCallback: (p) => modelStatusEl.textContent = p.text
@@ -154,7 +238,6 @@
       activeModelDisplay.style.display = "block";
       modelStatusEl.textContent = "✅ โมเดลพร้อมใช้งาน!";
       
-      // ปลดล็อกปุ่มส่งถ้าเชื่อมต่อ P2P แล้ว
       if (conn && conn.open) {
         userInput.disabled = false;
         sendBtn.disabled = false;
@@ -167,10 +250,10 @@
     }
   };
 
-  // 3. ปุ่มเชื่อมต่อ P2P
+  // 4. ปุ่มเชื่อมต่อ P2P
   connectBtn.onclick = () => {
     const targetId = targetIdInput.value.trim();
-    if (!targetId) return alert('กรุณากรอก Peer ID ของเพื่อน');
+    if (!targetId) return alert('กรุณากรอกหรือสแกน Peer ID ของเพื่อนก่อนครับ');
     
     conn = peer.connect(targetId);
     myRole = "Agent A";
@@ -193,7 +276,6 @@
         appendMessage("User", data.prompt, "user-prompt");
       }
       else if (data.type === 'AI_SPEECH') {
-        // แสดงข้อความเพื่อน + ชื่อโมเดลที่เครื่องเพื่อนใช้ + สถิติความเร็ว
         const metaData = { 
           model: data.modelUsed, 
           timeTaken: data.timeTaken, 
@@ -210,7 +292,7 @@
     });
   }
 
-  // 4. เมื่อ User กดส่งโจทย์
+  // 5. ส่งโจทย์ให้ AI ทำงาน
   sendBtn.onclick = async () => {
     const prompt = userInput.value.trim();
     if (!engine) return alert('กรุณากดโหลดโมเดลก่อนครับ');
@@ -223,7 +305,6 @@
     await generateLocalAIResponse(prompt, "เริ่มต้นการสนทนา", 1);
   };
 
-  // 5. ประมวลผลและส่งข้อมูล Sync
   async function generateLocalAIResponse(originalPrompt, lastMessage, round) {
     appendMessage("ระบบ", `${myRole} (${activeModelName}) กำลังคิด...`, "system");
 
@@ -251,10 +332,8 @@
 
       const metaData = { model: activeModelName, timeTaken: timeTakenSec, tokensPerSec: tokensPerSec };
 
-      // แสดงบนหน้าจอเรา
       appendMessage(`${myRole} (เครื่องนี้)`, aiText, "my-agent", metaData);
 
-      // ส่งไปแสดงที่ฝั่งเพื่อนพร้อมส่งชื่อโมเดลไปด้วย
       if (conn && conn.open) {
         conn.send({
           type: 'AI_SPEECH',
@@ -284,7 +363,6 @@
       htmlContent = `<strong>${sender}:</strong> ${text}`;
     }
 
-    // เพิ่ม Badge แสดงชื่อโมเดล + สถิติความเร็ว
     if (meta) {
       htmlContent += `<br><span class="meta-badge">🧠 ${meta.model} | ⚡ ${meta.tokensPerSec} tok/s | ⏱️ ${meta.timeTaken}s</span>`;
     }
