@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multi-Agent P2P Swarm AI (Persistent Registry & Reconnection)</title>
+  <title>Multi-Agent P2P Swarm AI (CoT Prompting Enabled)</title>
   <!-- PeerJS -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <!-- QRCode Generator -->
@@ -14,7 +14,7 @@
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: #f0f2f5; padding: 15px; display: flex; justify-content: center; margin: 0; }
-    .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 720px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 760px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     h2 { margin: 0 0 15px 0; color: #1877f2; text-align: center; }
     .box { background: #f7f8fa; border: 1px solid #e4e6eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
     .my-id { font-family: monospace; font-weight: bold; color: #1877f2; background: #e7f3ff; padding: 4px 8px; border-radius: 4px; word-break: break-all; }
@@ -26,18 +26,18 @@
     .btn-secondary { background: #65676b; }
     .btn-scan { background: #8b5cf6; }
     
-    .chat-box { height: 380px; overflow-y: auto; border: 1px solid #e4e6eb; padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }
-    .msg { padding: 10px 14px; border-radius: 10px; max-width: 88%; font-size: 0.9rem; line-height: 1.4; word-break: break-word; }
+    .chat-box { height: 420px; overflow-y: auto; border: 1px solid #e4e6eb; padding: 12px; border-radius: 10px; display: flex; flex-direction: column; gap: 12px; background: #fafafa; }
+    .msg { padding: 12px 16px; border-radius: 12px; max-width: 90%; font-size: 0.9rem; line-height: 1.5; word-break: break-word; white-space: pre-line; }
     
-    .msg.system { background: #e4e6eb; color: #4b4f56; align-self: center; font-size: 0.82rem; border-radius: 20px; padding: 4px 12px; }
-    .msg.user-prompt { background: #1877f2; color: #fff; align-self: center; text-align: center; width: 90%; font-weight: 500; }
-    .msg.agent-msg { background: #f0f2f5; color: #050505; align-self: flex-start; border-left: 4px solid #8b5cf6; }
-    .msg.my-agent { background: #e7f3ff; color: #050505; align-self: flex-start; border-left: 4px solid #1877f2; }
-    .msg.synthesis { background: #e6f4ea; color: #137333; align-self: center; width: 95%; border: 1px solid #ceead6; border-radius: 12px; }
+    .msg.system { background: #e4e6eb; color: #4b4f56; align-self: center; font-size: 0.82rem; border-radius: 20px; padding: 4px 14px; white-space: normal; }
+    .msg.user-prompt { background: #1877f2; color: #fff; align-self: center; text-align: center; width: 92%; font-weight: 500; white-space: normal; }
+    .msg.agent-msg { background: #f8f5ff; color: #050505; align-self: flex-start; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .msg.my-agent { background: #e7f3ff; color: #050505; align-self: flex-start; border-left: 4px solid #1877f2; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .msg.synthesis { background: #e6f4ea; color: #137333; align-self: center; width: 98%; border: 1px solid #ceead6; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
 
     .meta-badge {
       display: inline-block;
-      margin-top: 6px;
+      margin-top: 8px;
       padding: 3px 8px;
       font-size: 0.73rem;
       font-family: monospace;
@@ -78,7 +78,7 @@
 <body>
 
 <div class="card">
-  <h2>🐝 Multi-Agent Swarm AI (Client Registry & Reconnect)</h2>
+  <h2>🐝 Multi-Agent Swarm AI (CoT Prompting)</h2>
 
   <!-- 1. เลือกโมเดล AI -->
   <div class="box">
@@ -131,8 +131,8 @@
 
   <!-- ส่วนส่งโจทย์ให้ทุก Agent ช่วยกันคิด -->
   <div style="margin-top: 12px;">
-    <input type="text" id="user-input" placeholder="พิมพ์โจทย์ให้ทุก AI ในเครือข่ายช่วยกันระดมสมอง..." disabled>
-    <button id="send-btn" class="btn btn-success" disabled>🚀 ส่งโจทย์ให้ AI ทุกเครื่องช่วยกันคิด</button>
+    <input type="text" id="user-input" placeholder="พิมพ์โจทย์ให้ทุก AI ช่วยกันคิดแบบ Chain-of-Thought..." disabled>
+    <button id="send-btn" class="btn btn-success" disabled>🚀 ส่งโจทย์ให้ AI ทุกเครื่องระดมสมอง (CoT Mode)</button>
   </div>
 </div>
 
@@ -140,7 +140,7 @@
   import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
   // ==========================================
-  // 1. สร้าง/ดึง Persistent Agent UUID ประจำเครื่อง
+  // 1. Persistent Agent UUID ประจำเครื่อง
   // ==========================================
   function getOrCreateAgentUuid() {
     let uuid = localStorage.getItem('swarm_agent_uuid');
@@ -159,7 +159,6 @@
   let isHost = true;
   let hostConnection = null;
   
-  // Client Registry สำหรับ Host (Key: agentUuid, Value: Client Object)
   const clientRegistry = new Map();
 
   let activeModelName = "";
@@ -187,7 +186,7 @@
   myPersistentIdEl.textContent = myAgentUuid;
 
   // ==========================================
-  // 2. เริ่มต้น PeerJS และระบบ Host Server
+  // 2. เริ่มต้น PeerJS และ Host Server
   // ==========================================
   peer = new Peer();
   peer.on('open', (id) => {
@@ -196,26 +195,21 @@
     new QRCode(document.getElementById("qrcode"), { text: id, width: 120, height: 120 });
   });
 
-  // ฝั่ง Host: เมื่อมี Client เชื่อมต่อเข้ามา
   peer.on('connection', (conn) => {
     isHost = true;
     registryView.style.display = "block";
 
     conn.on('data', async (data) => {
-      // --- ระบบ Handshake & Registration (จดจำ Client) ---
       if (data.type === 'REGISTER_NODE') {
         const { agentUuid, preferredName } = data;
         let clientObj = clientRegistry.get(agentUuid);
 
         if (clientObj) {
-          //กรณี: เครื่องเดิม Reconnect กลับเข้ามา
           clientObj.conn = conn;
           clientObj.status = 'online';
           clientObj.lastSeen = Date.now();
-
           appendMessage("ระบบ", `🔄 ${clientObj.roleName} (${agentUuid}) เชื่อมต่อกลับเข้าสู่ห้องแล้ว!`, "system");
         } else {
-          //กรณี: เครื่องใหม่เพิ่งเคยเข้าครั้งแรก
           const assignedRole = preferredName || `Agent #${clientRegistry.size + 1}`;
           clientObj = {
             agentUuid: agentUuid,
@@ -225,11 +219,9 @@
             joinedAt: Date.now()
           };
           clientRegistry.set(agentUuid, clientObj);
-
-          appendMessage("ระบบ", `🤝 ${assignedRole} เข้าร่วมห้องเรียบร้อย (จดจำใน Registry)`, "system");
+          appendMessage("ระบบ", `🤝 ${assignedRole} เข้าร่วมห้องเรียบร้อย`, "system");
         }
 
-        // ส่งต้อนรับ + มอบหมายชื่อ + ส่งจำนวน Nodes ปัจจุบัน
         conn.send({
           type: 'WELCOME_PACKET',
           roleName: clientObj.roleName,
@@ -245,11 +237,10 @@
     });
 
     conn.on('close', () => {
-      // เมื่อการเชื่อมต่อหลุด ให้ทำเครื่องหมายเป็น offline แต่ยังจำไว้ใน Registry
       for (let [uuid, client] of clientRegistry.entries()) {
         if (client.conn === conn) {
           client.status = 'offline';
-          appendMessage("ระบบ", `⚠️ ${client.roleName} ขาดการติดต่อ (หลุด/รอ Reconnect)`, "system");
+          appendMessage("ระบบ", `⚠️ ${client.roleName} ขาดการติดต่อ`, "system");
           break;
         }
       }
@@ -258,7 +249,7 @@
   });
 
   function getOnlineNodesCount() {
-    let onlineCount = 1; // รวม Host เอง
+    let onlineCount = 1;
     for (let client of clientRegistry.values()) {
       if (client.status === 'online') onlineCount++;
     }
@@ -270,7 +261,6 @@
     const count = getOnlineNodesCount();
     nodeCountBadge.textContent = `${count} Nodes Active`;
 
-    // อัปเดตรายการหน้าจอ Host
     let itemsHtml = `🟢 Host Agent (เครื่องนี้)<br>`;
     for (let client of clientRegistry.values()) {
       const statusIcon = client.status === 'online' ? '🟢' : '🔴 (Offline)';
@@ -278,12 +268,11 @@
     }
     registryItems.innerHTML = itemsHtml;
 
-    // บรอดแคสต์บอก Client ทุกคนอัปเดตจำนวน Node
     broadcastToAll({ type: 'UPDATE_NODE_COUNT', nodeCount: count });
   }
 
   // ==========================================
-  // 3. ระบบสแกน QR Code
+  // 3. QR Code Scanner
   // ==========================================
   scanBtn.onclick = () => {
     document.getElementById('reader').style.display = 'block';
@@ -316,7 +305,7 @@
   }
 
   // ==========================================
-  // 4. โหลดโมเดล WebLLM
+  // 4. โหลด WebLLM Model
   // ==========================================
   initModelBtn.onclick = async () => {
     const selectedModel = modelSelect.value;
@@ -344,7 +333,7 @@
   };
 
   // ==========================================
-  // 5. เชื่อมต่อเข้าห้อง Host (Client)
+  // 5. Connect to Host (Client)
   // ==========================================
   connectBtn.onclick = () => {
     const targetId = targetIdInput.value.trim();
@@ -354,7 +343,6 @@
     hostConnection = peer.connect(targetId);
 
     hostConnection.on('open', () => {
-      // ส่ง Handshake ลงทะเบียนด้วย Persistent Agent UUID
       hostConnection.send({
         type: 'REGISTER_NODE',
         agentUuid: myAgentUuid,
@@ -380,13 +368,13 @@
     });
 
     hostConnection.on('close', () => {
-      appendMessage("ระบบ", "⚠️ หลุดจากการเชื่อมต่อกับ Host (กดเชื่อมต่ออีกครั้งเพื่อ Reconnect)", "system");
+      appendMessage("ระบบ", "⚠️ หลุดจากการเชื่อมต่อกับ Host", "system");
       nodeCountBadge.textContent = "Disconnected";
     });
   };
 
   // ==========================================
-  // 6. การส่งข่าวสาร Broadcast ข้ามเครือข่าย
+  // 6. Broadcast Data Handling
   // ==========================================
   function broadcastToAll(data) {
     if (isHost) {
@@ -400,7 +388,6 @@
     }
   }
 
-  // Handle Network Messages
   async function handleIncomingNetworkData(data, senderConn) {
     if (data.type === 'BROADCAST_PROMPT') {
       currentTaskPrompt = data.prompt;
@@ -422,7 +409,7 @@
   }
 
   // ==========================================
-  // 7. การส่งโจทย์และประมวลผล
+  // 7. Chain-of-Thought (CoT) Processing
   // ==========================================
   sendBtn.onclick = async () => {
     const prompt = userInput.value.trim();
@@ -435,25 +422,34 @@
 
     appendMessage("User", prompt, "user-prompt");
 
-    // บรอดแคสต์บอกทุก Node ที่ Online อยู่ทำพร้อมกัน
     broadcastToAll({ type: 'BROADCAST_PROMPT', prompt: prompt });
-
-    // เครื่องตัวเองประมวลผลด้วย
     await processLocalThought(prompt);
   };
 
   async function processLocalThought(prompt) {
-    appendMessage("ระบบ", `${myNodeName} (${activeModelName}) กำลังคิด...`, "system");
+    appendMessage("ระบบ", `🧠 ${myNodeName} กำลังคิดวิเคราะห์แบบ Chain-of-Thought...`, "system");
 
-    const systemPrompt = `คุณคือ ${myNodeName} จงให้คำตอบหรือวิเคราะห์โจทย์ต่อไปนี้อย่างกระชับ
-โจทย์: "${prompt}"
-ตอบสั้นๆ ไม่เกิน 3 ประโยค`;
+    // 🌟 บังคับใช้ Chain-of-Thought (CoT) System Prompt
+    const systemPrompt = `คุณคือ ${myNodeName} AI Agent ในระบบ Swarm
+จงใช้กระบวนการคิดแบบ Chain-of-Thought (CoT) โดยคิดทีละขั้นตอนอย่างเป็นระบบก่อนสรุปคำตอบ
+
+รูปแบบการตอบที่คุณต้องทำตามอย่างเคร่งครัด:
+💭 **กระบวนการคิด:**
+1. วิเคราะห์โจทย์: ...
+2. เหตุผลและตรรกะ: ...
+
+🎯 **คำตอบสุดท้าย:**
+(ระบุข้อสรุปที่กระชับ ไม่เกิน 2 ประโยค)`;
 
     const startTime = performance.now();
 
     try {
       const completion = await engine.chat.completions.create({
-        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: "เสนอไอเดียของคุณ" }]
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `โจทย์: "${prompt}"\n\nจงแสดงกระบวนการคิดและตอบคำตอบ:` }
+        ],
+        temperature: 0.3 // ลด Temperature เพื่อเพิ่มความแม่นยำทางตรรกะ
       });
 
       const endTime = performance.now();
@@ -487,32 +483,40 @@
   }
 
   // ==========================================
-  // 8. สังเคราะห์สรุปภาพรวม (Consensus)
+  // 8. CoT Swarm Consensus Synthesis
   // ==========================================
   async function checkAndSynthesizeConsensus() {
     const totalOnlineExpected = getOnlineNodesCount();
     if (collectedResponses.length < totalOnlineExpected) return;
 
-    appendMessage("ระบบ", "🤖 ทุก Agent ออนไลน์คิดเสร็จแล้ว! Host กำลังสรุปผลภาพรวม...", "system");
+    appendMessage("ระบบ", "🤖 ทุก Agent คิดเสร็จแล้ว! Host กำลังใช้ CoT ประมวลผลสังเคราะห์คำตอบ...", "system");
 
-    let allIdeas = collectedResponses.map(r => `- ${r.agent}: ${r.text}`).join("\n");
-    const synthesisPrompt = `คุณคือ Host AI หน้าที่ของคุณคือรวบรวมมุมมองจาก Agents ทั้งหมด แล้วสรุปออกมาเป็นคำตอบที่ดีที่สุดคำตอบเดียว
+    let allIdeas = collectedResponses.map(r => `--- [ไอเดียจาก ${r.agent}] ---\n${r.text}`).join("\n\n");
+    
+    // 🌟 Host สังเคราะห์ผลลัพธ์โดยวิเคราะห์ CoT ของทุกเครื่อง
+    const synthesisPrompt = `คุณคือ Host AI หน้าที่ของคุณคือวิเคราะห์กระบวนการคิด (Chain-of-Thought) ของ Agents ทั้งหมดใน Swarm แล้วสรุปหาคำตอบที่ดีที่สุด
+
 โจทย์เดิม: "${currentTaskPrompt}"
-ความคิดเห็นจาก Agents ต่างๆ:
+
+ข้อมูลความคิดเห็นจาก Agents:
 ${allIdeas}
 
-จงสรุปคำตอบสุดท้ายที่สมบูรณ์และเป็นเอกภาพที่สุด (ไม่เกิน 4 ประโยค):`;
+จงประมวลผลตามรูปแบบนี้:
+📊 **วิเคราะห์กระบวนการคิดของ Swarm:**
+- สรุปจุดที่ทุก Agent เห็นตรงกัน และกรองจุดที่ไม่สมเหตุสมผลออก
+
+👑 **มติรวมของ Swarm AI (Consensus):**
+- คำตอบสุดท้ายที่เป็นเอกภาพ ชัดเจน และถูกต้องที่สุด (ไม่เกิน 3 ประโยค)`;
 
     try {
       const completion = await engine.chat.completions.create({
-        messages: [{ role: "user", content: synthesisPrompt }]
+        messages: [{ role: "user", content: synthesisPrompt }],
+        temperature: 0.2
       });
 
       const finalSynthesizedText = completion.choices[0].message.content;
 
       appendMessage("👑 คำตอบสังเคราะห์ภาพรวม (Swarm Consensus)", finalSynthesizedText, "synthesis");
-
-      // ส่งให้ทุก Client
       broadcastToAll({ type: 'FINAL_SYNTHESIS', text: finalSynthesizedText });
 
     } catch (err) {
