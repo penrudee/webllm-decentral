@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Swarm AI: Multi-Round CoT Debate & Peer Review</title>
+  <title>Swarm AI: RAG + CoT Multi-Round Debate</title>
   <!-- PeerJS -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <!-- QRCode Generator -->
@@ -14,12 +14,14 @@
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: #f0f2f5; padding: 15px; display: flex; justify-content: center; margin: 0; }
-    .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 800px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .card { background: #fff; border-radius: 16px; padding: 20px; max-width: 840px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     h2 { margin: 0 0 15px 0; color: #1877f2; text-align: center; }
     .box { background: #f7f8fa; border: 1px solid #e4e6eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
     .my-id { font-family: monospace; font-weight: bold; color: #1877f2; background: #e7f3ff; padding: 4px 8px; border-radius: 4px; word-break: break-all; }
     
-    select, input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccd0d5; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; background-color: #fff; }
+    select, input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid #ccd0d5; border-radius: 8px; margin-bottom: 8px; font-size: 0.9rem; background-color: #fff; }
+    textarea { height: 100px; resize: vertical; font-family: inherit; }
+    
     .btn { background: #1877f2; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-bottom: 6px; }
     .btn:disabled { background: #e4e6eb; color: #bcc0c4; cursor: not-allowed; }
     .btn-success { background: #42b72a; }
@@ -32,6 +34,7 @@
     .msg.system { background: #e4e6eb; color: #4b4f56; align-self: center; font-size: 0.82rem; border-radius: 20px; padding: 4px 14px; white-space: normal; }
     .msg.round-banner { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; align-self: center; text-align: center; font-weight: bold; width: 100%; white-space: normal; }
     .msg.user-prompt { background: #1877f2; color: #fff; align-self: center; text-align: center; width: 92%; font-weight: 500; white-space: normal; }
+    .msg.rag-info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; align-self: center; width: 95%; font-size: 0.83rem; }
     
     .msg.round1-msg { background: #e7f3ff; color: #050505; align-self: flex-start; border-left: 4px solid #1877f2; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .msg.round2-msg { background: #f3e8ff; color: #050505; align-self: flex-start; border-left: 4px solid #9333ea; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -49,9 +52,16 @@
 <body>
 
 <div class="card">
-  <h2>🗣️ Swarm AI: CoT Multi-Round Debate System</h2>
+  <h2>📚 Swarm AI: RAG + CoT Multi-Round Debate</h2>
 
-  <!-- 1. เลือกโมเดล AI -->
+  <!-- 1. คลังความรู้ RAG (Knowledge Base) -->
+  <div class="box" style="border-left: 4px solid #0284c7;">
+    <label for="kb-input"><strong>📚 คลังความรู้ RAG (Knowledge Base):</strong></label>
+    <textarea id="kb-input" placeholder="วางเนื้อหา เอกสาร หรือข้อมูลภายนอกที่ต้องการให้ AI ใช้เป็นฐานความรู้ที่นี่..."></textarea>
+    <div style="font-size: 0.75rem; color: #65676b;">ระบบจะแบ่งข้อความนี้เป็น Chunks และดึงส่วนที่เกี่ยวข้องที่สุดส่งให้ AI ใน Swarm อ้างอิง</div>
+  </div>
+
+  <!-- 2. เลือกโมเดล AI -->
   <div class="box">
     <label for="model-select"><strong>เลือกโมเดล AI ในเครื่องนี้:</strong></label>
     <select id="model-select">
@@ -64,7 +74,7 @@
     <div id="model-status" class="status">สถานะ: กดปุ่มด้านบนเพื่อโหลดโมเดล</div>
   </div>
 
-  <!-- 2. ส่วนแสดง ID เครื่อง + QR Code -->
+  <!-- 3. ส่วนแสดง ID เครื่อง + QR Code -->
   <div class="box">
     <div>
       <strong>Node Peer ID:</strong> <span id="my-id" class="my-id">กำลังสร้าง ID...</span>
@@ -76,11 +86,11 @@
     
     <div class="qr-container">
       <div id="qrcode"></div>
-      <div style="font-size: 0.75rem; color: #65676b; margin-top: 5px;">ให้เครื่องอื่นสแกน QR Code เพื่อเข้าร่วม Debate</div>
+      <div style="font-size: 0.75rem; color: #65676b; margin-top: 5px;">ให้เครื่องอื่นสแกน QR Code เพื่อเข้าร่วมห้อง</div>
     </div>
   </div>
 
-  <!-- 3. เชื่อมต่อ Host -->
+  <!-- 4. เชื่อมต่อ Host -->
   <div class="box">
     <label><strong>เข้าร่วมห้องเพื่อน (Connect to Host):</strong></label>
     <input type="text" id="target-id" placeholder="วาง Host Peer ID หรือสแกน QR Code">
@@ -91,20 +101,19 @@
     <button id="connect-btn" class="btn">2. เชื่อมต่อเข้าห้อง Multi-Agent</button>
   </div>
 
-  <!-- หน้าจอแชทอภิปราย -->
+  <!-- หน้าจอแชท -->
   <div class="chat-box" id="chat-box"></div>
 
-  <!-- ส่งโจทย์เข้ากระบวนการ Debate -->
+  <!-- ส่งโจทย์เข้ากระบวนการ -->
   <div style="margin-top: 12px;">
-    <input type="text" id="user-input" placeholder="พิมพ์โจทย์ที่ต้องการให้ Swarm AI อภิปรายและตรวจสอบกันเอง..." disabled>
-    <button id="send-btn" class="btn btn-success" disabled>🚀 เริ่มการอภิปรายหลายรอบ (Multi-Round Debate)</button>
+    <input type="text" id="user-input" placeholder="พิมพ์โจทย์คำถามที่ต้องการให้ AI ค้นคลังข้อมูลและอภิปรายกัน..." disabled>
+    <button id="send-btn" class="btn btn-success" disabled>🚀 เริ่มการอภิปรายพร้อม RAG (RAG + Debate)</button>
   </div>
 </div>
 
 <script type="module">
   import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
-  // Persistent ID
   function getOrCreateAgentUuid() {
     let uuid = localStorage.getItem('swarm_agent_uuid');
     if (!uuid) {
@@ -126,7 +135,6 @@
   let activeModelName = "";
   let html5QrcodeScanner = null;
   
-  // State variables สำหรับจัดการ Multi-Round Flow
   let currentTaskPrompt = "";
   let round1Responses = [];
   let round2Responses = [];
@@ -134,6 +142,7 @@
   const myIdEl = document.getElementById('my-id');
   const myPersistentIdEl = document.getElementById('my-persistent-id');
   const nodeCountBadge = document.getElementById('node-count-badge');
+  const kbInput = document.getElementById('kb-input');
   const modelSelect = document.getElementById('model-select');
   const initModelBtn = document.getElementById('init-model-btn');
   const modelStatusEl = document.getElementById('model-status');
@@ -147,7 +156,7 @@
 
   myPersistentIdEl.textContent = myAgentUuid;
 
-  // Initial PeerJS
+  // PeerJS Init
   peer = new Peer();
   peer.on('open', (id) => {
     myIdEl.textContent = id;
@@ -268,17 +277,48 @@
   }
 
   // ==========================================
+  // 🔍 CLIENT-SIDE RAG RETRIEVAL ENGINE
+  // ==========================================
+  function retrieveRelevantContext(query, topK = 2) {
+    const rawKB = kbInput.value.trim();
+    if (!rawKB) return "";
+
+    // 1. Chunking ข้อความตามย่อหน้า
+    const chunks = rawKB.split(/\n\n+/).map(c => c.trim()).filter(c => c.length > 5);
+    if (chunks.length === 0) return "";
+
+    // 2. คำนวณคะแนน Relevance Score จาก Keyword Match
+    const queryTerms = query.toLowerCase().split(/\s+/).filter(t => t.length > 1);
+
+    const scoredChunks = chunks.map(chunk => {
+      let score = 0;
+      const chunkLower = chunk.toLowerCase();
+      queryTerms.forEach(term => {
+        if (chunkLower.includes(term)) score += 1;
+      });
+      return { chunk, score };
+    });
+
+    // 3. จัดลำดับคัดเลือกเฉพาะ Top-K Chunks ที่มีคะแนนสูงสุด
+    scoredChunks.sort((a, b) => b.score - a.score);
+    const topResults = scoredChunks.slice(0, topK).map(item => item.chunk);
+
+    return topResults.join("\n---\n");
+  }
+
+  // ==========================================
   // 🔄 MULTI-ROUND DEBATE NETWORK HANDLER
   // ==========================================
   async function handleIncomingNetworkData(data, senderConn) {
-    // 📢 Host สั่งเริ่ม Round 1
     if (data.type === 'START_ROUND_1') {
       currentTaskPrompt = data.prompt;
-      appendMessage("📢 ประกาศ", `เริ่มกระบวนการ Multi-Round Debate สำหรับโจทย์: "${data.prompt}"`, "round-banner");
+      appendMessage("📢 ประกาศ", `เริ่มกระบวนการ RAG + Debate สำหรับโจทย์: "${data.prompt}"`, "round-banner");
       appendMessage("User", data.prompt, "user-prompt");
-      await executeRound1(data.prompt);
+      if (data.retrievedContext) {
+        appendMessage("📚 RAG Context (บริบทที่ค้นพบ)", data.retrievedContext, "rag-info");
+      }
+      await executeRound1(data.prompt, data.retrievedContext);
     }
-    // 📩 รับคำตอบ Round 1 (ฝั่ง Host)
     else if (data.type === 'ROUND_1_RESPONSE') {
       appendMessage(`📌 ${data.agentName} (Round 1 CoT)`, data.text, "round1-msg", data.meta);
       if (isHost) {
@@ -286,12 +326,10 @@
         checkRound1Completion();
       }
     }
-    // 📢 Host สั่งเริ่ม Round 2 (Peer Review / Debate)
     else if (data.type === 'START_ROUND_2') {
       appendMessage("⚔️ รอบที่ 2", "เข้าสู่ช่วง Peer Review & Debate! กำลังวิจารณ์คำตอบของเพื่อนๆ...", "round-banner");
       await executeRound2(data.allRound1Data);
     }
-    // 📩 รับคำตอบ Round 2 (ฝั่ง Host)
     else if (data.type === 'ROUND_2_RESPONSE') {
       appendMessage(`🔍 ${data.agentName} (Round 2 Peer Review)`, data.text, "round2-msg", data.meta);
       if (isHost) {
@@ -299,14 +337,13 @@
         checkRound2Completion();
       }
     }
-    // 👑 รับคำตอบสังเคราะห์สุดท้าย
     else if (data.type === 'FINAL_SYNTHESIS') {
       appendMessage("👑 คำตอบมติรวมสุดท้าย (Final Consensus)", data.text, "synthesis");
     }
   }
 
   // ==========================================
-  // 🚀 START DEBATE FLOW (HOST USER)
+  // 🚀 START DEBATE FLOW WITH RAG (HOST)
   // ==========================================
   sendBtn.onclick = async () => {
     const prompt = userInput.value.trim();
@@ -317,39 +354,50 @@
     round1Responses = [];
     round2Responses = [];
 
-    appendMessage("📢 ประกาศ", `เริ่มกระบวนการ Multi-Round Debate สำหรับโจทย์: "${prompt}"`, "round-banner");
-    appendMessage("User", prompt, "user-prompt");
+    // ดึงบริบท RAG จาก Knowledge Base
+    const retrievedContext = retrieveRelevantContext(prompt);
 
-    // กระจายสั่งให้ทุก Node เริ่ม Round 1
-    broadcastToAll({ type: 'START_ROUND_1', prompt: prompt });
-    await executeRound1(prompt);
+    appendMessage("📢 ประกาศ", `เริ่มกระบวนการ RAG + Debate สำหรับโจทย์: "${prompt}"`, "round-banner");
+    appendMessage("User", prompt, "user-prompt");
+    if (retrievedContext) {
+      appendMessage("📚 RAG Context (บริบทที่ค้นพบ)", retrievedContext, "rag-info");
+    }
+
+    // กระจายโจทย์และ RAG Context ไปยังทุก Node
+    broadcastToAll({ type: 'START_ROUND_1', prompt: prompt, retrievedContext: retrievedContext });
+    await executeRound1(prompt, retrievedContext);
   };
 
   // ==========================================
-  // 🧠 ROUND 1: INITIAL CoT THINKING
+  // 🧠 ROUND 1: RAG + CoT THINKING
   // ==========================================
-  async function executeRound1(prompt) {
+  async function executeRound1(prompt, context) {
     appendMessage("ระบบ", `🧠 [Round 1] ${myNodeName} กำลังคิดคำตอบเบื้องต้นด้วย CoT...`, "system");
 
     const systemPrompt = `คุณคือ ${myNodeName} ในระบบ Swarm AI
-จงใช้ Chain of Thought (CoT) วิเคราะห์โจทย์ทีละขั้นตอนก่อนสรุปคำตอบเบื้องต้น
+จงใช้ Chain of Thought (CoT) วิเคราะห์โจทย์ทีละขั้นตอน โดยใช้บริบทข้อมูลอ้างอิง (Knowledge Base Context) ที่กำหนดให้เพื่อประกอบการคิด
 
 ตอบตามโครงสร้างนี้:
-💭 **วิเคราะห์โจทย์ & ขั้นตอนการคิด:**
+💭 **วิเคราะห์โจทย์ & ข้อมูลอ้างอิง:**
 1. ...
 2. ...
 
 🎯 **คำตอบเบื้องต้น:**
 ...`;
 
+    let userContent = `โจทย์: "${prompt}"`;
+    if (context) {
+      userContent += `\n\n[บริบทข้อมูลอ้างอิงจากคลังความรู้ RAG]:\n${context}`;
+    }
+
     const startTime = performance.now();
     try {
       const completion = await engine.chat.completions.create({
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `โจทย์: "${prompt}"` }
+          { role: "user", content: userContent }
         ],
-        temperature: 0.4
+        temperature: 0.3
       });
 
       const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
@@ -375,7 +423,6 @@
   function checkRound1Completion() {
     if (round1Responses.length < getOnlineNodesCount()) return;
     
-    // เมื่อครบทุกเครื่องแล้ว Host สั่งกระจายโจทย์ Round 2 (Debate)
     appendMessage("ระบบ", "✅ ได้รับคำตอบ Round 1 ครบทุกเครื่องแล้ว! กำลังส่งเข้าสู่ Round 2 Peer Review...", "system");
     
     broadcastToAll({
@@ -388,7 +435,7 @@
   }
 
   // ==========================================
-  // ⚔️ ROUND 2: PEER REVIEW & DEBATE WITH CoT
+  // ⚔️ ROUND 2: PEER REVIEW & DEBATE
   // ==========================================
   async function executeRound2(allRound1Data) {
     appendMessage("ระบบ", `🔍 [Round 2] ${myNodeName} กำลังตรวจประเมินคำตอบของ Agents ทั้งหมด...`, "system");
@@ -423,7 +470,7 @@ ${peersThoughtText}
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.2 // ลด Temperature ให้เน้นตรรกะที่รัดกุม
+        temperature: 0.2
       });
 
       const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
@@ -486,7 +533,7 @@ ${debateSummary}
     msgDiv.className = `msg ${styleClass}`;
     let htmlContent = `<strong>${sender}:</strong><br>${text}`;
 
-    if (styleClass.includes('system') || styleClass.includes('user-prompt') || styleClass.includes('round-banner')) {
+    if (styleClass.includes('system') || styleClass.includes('user-prompt') || styleClass.includes('round-banner') || styleClass.includes('rag-info')) {
       htmlContent = `<strong>${sender}:</strong> ${text}`;
     }
 
